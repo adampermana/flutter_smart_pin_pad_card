@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.3.0'
+        classpath 'com.android.tools.build:gradle:7.3.1'
     }
 }
 
@@ -26,11 +26,11 @@ android {
         namespace 'com.adpstore.flutter_smart_pin_pad_cards'
     }
 
-    compileSdkVersion 33
+    compileSdk 33
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     defaultConfig {
@@ -38,8 +38,10 @@ android {
     }
 
     dependencies {
+        implementation files('libs/T1_V2_20240223.jar')
+        implementation files('libs/TopTool_V2_0_2.jar')
         testImplementation 'junit:junit:4.13.2'
-        testImplementation 'org.mockito:mockito-core:5.0.0'
+        testImplementation 'org.mockito:mockito-core:5.1.0'
     }
 
     testOptions {
