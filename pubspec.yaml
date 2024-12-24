@@ -1,12 +1,14 @@
 name: flutter_smart_pin_pad_cards
 description: A new Flutter project.
 version: 0.0.1
+homepage: https://github.com/adampermana/flutter_smart_pin_pad_card.git
 repository: https://github.com/adampermana/flutter_smart_pin_pad_card.git
 issue_tracker: https://github.com/adampermana/flutter_smart_pin_pad_card/issues
+license: MIT
 
 environment:
-  sdk: '>=3.1.5 <4.0.0'
-  flutter: '>=3.3.0'
+  sdk: '>=3.1.0 <4.0.0'
+  flutter: '>=3.1.0'
 
 dependencies:
   flutter:
