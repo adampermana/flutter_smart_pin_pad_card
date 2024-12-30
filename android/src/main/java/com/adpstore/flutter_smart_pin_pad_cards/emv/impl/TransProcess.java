@@ -7,6 +7,7 @@ import com.adpstore.flutter_smart_pin_pad_cards.emv.AdpUsdkManage;
 import com.adpstore.flutter_smart_pin_pad_cards.emv.AppLog;
 import com.adpstore.flutter_smart_pin_pad_cards.emv.ContactEmvProcess;
 import com.adpstore.flutter_smart_pin_pad_cards.emv.ContactLessProcess;
+import com.adpstore.flutter_smart_pin_pad_cards.emv.IEmv;
 import com.adpstore.flutter_smart_pin_pad_cards.emv.ITransProcessListener;
 import com.adpstore.flutter_smart_pin_pad_cards.emv.entity.EinputType;
 import com.adpstore.flutter_smart_pin_pad_cards.emv.entity.EmvErrorCode;
@@ -19,7 +20,7 @@ import com.topwise.cloudpos.aidl.emv.level2.EmvTerminalInfo;
 
 import java.util.List;
 
-public class TransProcess {
+public class TransProcess implements IEmv {
     private static final String TAG = TransProcess.class.getSimpleName();
     private static TransProcess instance;
     private final static String version = "version V2.0.00_20221102";

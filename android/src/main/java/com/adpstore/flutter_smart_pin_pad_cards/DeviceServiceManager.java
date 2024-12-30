@@ -1,103 +1,82 @@
-/*============================================================
- Module Name       : AdpLocalManage.java
- Date of Creation  : 18/12/2024
- Name of Creator   : Adam Permana
- History of Modifications:
- 18/12/2024- Lorem Ipsum
-
- Summary           :
-
-
- Functions         :
- -
-
- Variables         :
- -
-
- ============================================================*/
-
-package com.adpstore.flutter_smart_pin_pad_cards.emv;
+package com.adpstore.flutter_smart_pin_pad_cards;
 
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 
-import com.adpstore.flutter_smart_pin_pad_cards.emv.impl.TransProcess;
 import com.topwise.cloudpos.aidl.AidlDeviceService;
-import com.topwise.cloudpos.aidl.card.AidlCheckCard;
+import com.topwise.cloudpos.aidl.buzzer.AidlBuzzer;
+import com.topwise.cloudpos.aidl.camera.AidlCameraScanCode;
 import com.topwise.cloudpos.aidl.cpucard.AidlCPUCard;
+import com.topwise.cloudpos.aidl.decoder.AidlDecoderManager;
 import com.topwise.cloudpos.aidl.emv.level2.AidlAmex;
-import com.topwise.cloudpos.aidl.emv.level2.AidlDpas;
 import com.topwise.cloudpos.aidl.emv.level2.AidlEmvL2;
 import com.topwise.cloudpos.aidl.emv.level2.AidlEntry;
-import com.topwise.cloudpos.aidl.emv.level2.AidlJcb;
-import com.topwise.cloudpos.aidl.emv.level2.AidlMir;
 import com.topwise.cloudpos.aidl.emv.level2.AidlPaypass;
 import com.topwise.cloudpos.aidl.emv.level2.AidlPaywave;
 import com.topwise.cloudpos.aidl.emv.level2.AidlPure;
 import com.topwise.cloudpos.aidl.emv.level2.AidlQpboc;
-import com.topwise.cloudpos.aidl.emv.level2.AidlRupay;
+import com.topwise.cloudpos.aidl.fingerprint.AidlFingerprint;
 import com.topwise.cloudpos.aidl.iccard.AidlICCard;
+import com.topwise.cloudpos.aidl.led.AidlLed;
 import com.topwise.cloudpos.aidl.magcard.AidlMagCard;
+import com.topwise.cloudpos.aidl.pedestal.AidlPedestal;
 import com.topwise.cloudpos.aidl.pinpad.AidlPinpad;
+import com.topwise.cloudpos.aidl.pm.AidlPM;
+import com.topwise.cloudpos.aidl.printer.AidlPrinter;
 import com.topwise.cloudpos.aidl.psam.AidlPsam;
 import com.topwise.cloudpos.aidl.rfcard.AidlRFCard;
 import com.topwise.cloudpos.aidl.serialport.AidlSerialport;
 import com.topwise.cloudpos.aidl.shellmonitor.AidlShellMonitor;
 import com.topwise.cloudpos.aidl.system.AidlSystem;
+import com.topwise.cloudpos.aidl.tm.AidlTM;
 
 import java.lang.reflect.Method;
 
-public class AdpLocalManage implements IAdpUsdk {
-    private static final String TAG = AdpUsdkManage.class.getSimpleName();
-    private static String DEVICE_SERVICE_PACKAGE_NAME = "com.android.topwise.topusdkservice";
-    private static String DEVICE_SERVICE_CLASS_NAME = "com.android.topwise.topusdkservice.service.DeviceService";
-    private static String ACTION_DEVICE_SERVICE = "topwise_cloudpos_device_service";
-    /**
-     * singleton
-     */
-    private static AdpLocalManage mService;
-    private static final String version = "V1.0.10";
-    private static Context mContext;
-    private static AidlDeviceService mDeviceService;
+/**
+ * @author caixh
+ */
+public class DeviceServiceManager {
+    private static final String TAG = "DeviceServiceManager";
 
-    private AdpUsdkManage.InitListener mListener;
+    private static final String DEVICE_SERVICE_PACKAGE_NAME = "com.android.topwise.topusdkservice";
+    private static final String DEVICE_SERVICE_CLASS_NAME = "com.android.topwise.topusdkservice.service.DeviceService";
+    private static final String ACTION_DEVICE_SERVICE = "topwise_cloudpos_device_service";
 
+    private static DeviceServiceManager instance;
+    private Context mContext;
+    private AidlDeviceService mDeviceService;
 
-    public AdpLocalManage() {
-        Log.e(TAG, "AdpLocalManage version = " + version);
-    }
-
-    public static IAdpUsdk getInstance() {
-        if (mService == null) {
-            synchronized (AdpLocalManage.class) {
-                if (mService == null) {
-                    mService = new AdpLocalManage();
-                }
+    public static DeviceServiceManager getInstance() {
+        Log.d(TAG,"getInstance()");
+        if (null == instance) {
+            synchronized (DeviceServiceManager.class) {
+                instance = new DeviceServiceManager();
             }
         }
-        return mService;
+        return instance;
     }
 
-    public synchronized boolean bindDeviceService() {
-        Log.i(TAG, "bindDeviceService");
-        if (getDeviceService()) {
-            if (mListener != null) {
-                mListener.OnConnection(true);
-            }
+
+    public boolean bindDeviceService(Context context) {
+        Log.i(TAG,"bindDeviceService");
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             return true;
         }
+        this.mContext = context;
         Intent intent = new Intent();
         intent.setAction(ACTION_DEVICE_SERVICE);
         intent.setClassName(DEVICE_SERVICE_PACKAGE_NAME, DEVICE_SERVICE_CLASS_NAME);
 
         try {
             boolean bindResult = mContext.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-            AppLog.d(TAG, "bindResult bindResult = " + bindResult);
+            Log.i(TAG,"bindResult = " + bindResult);
             return bindResult;
         } catch (Exception e) {
             e.printStackTrace();
@@ -107,54 +86,44 @@ public class AdpLocalManage implements IAdpUsdk {
     }
 
     public void unBindDeviceService() {
-        Log.i(TAG, "unBindDeviceService");
+        Log.i(TAG,"unBindDeviceService");
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return;
+        }
         try {
             mContext.unbindService(mConnection);
         } catch (Exception e) {
-            Log.i(TAG, "unbind DeviceService service failed : " + e);
+            Log.i(TAG,"unbind DeviceService service failed : " + e);
         }
     }
+
 
     private final ServiceConnection mConnection = new ServiceConnection() {
 
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             mDeviceService = AidlDeviceService.Stub.asInterface(service);
-            AppLog.d(TAG, "gz mDeviceService" + mDeviceService);
-            if (mListener != null) {
-                mListener.OnConnection(true);
-                mListener = null;
-            }
+            Log.d(TAG,"gz mDeviceService" + mDeviceService);
+            Log.i(TAG,"onServiceConnected  :  " + mDeviceService);
         }
 
+        @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            AppLog.d(TAG, "onServiceDisconnected  :  " + mDeviceService);
+            Log.i(TAG,"onServiceDisconnected  :  " + mDeviceService);
             mDeviceService = null;
-            if (mListener != null) {
-                mListener.OnConnection(false);
-                mListener = null;
-            }
         }
     };
 
-    @Override
-    public String getVersion() {
-        return version;
+    public void getDeviceService() {
+        if(mDeviceService == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            mDeviceService =  AidlDeviceService.Stub.asInterface(getService(ACTION_DEVICE_SERVICE));
+        }
     }
 
-    @Override
-    public void init(Context mContext, AdpUsdkManage.InitListener initListener) {
-        Log.e(TAG, "bindDeviceService");
-        this.mContext = mContext;
-        mListener = initListener;
-        bindDeviceService();
-
-    }
-
-    private IBinder getService(String serviceName) {
+    private static IBinder getService(String serviceName) {
         IBinder binder = null;
         try {
-            ClassLoader cl = mContext.getClassLoader();
+            ClassLoader cl = SmartPosApplication.getContext().getClassLoader();
             Class<?> serviceManager = cl.loadClass("android.os.ServiceManager");
             Class[] paramTypes = new Class[1];
             paramTypes[0] = String.class;
@@ -168,15 +137,8 @@ public class AdpLocalManage implements IAdpUsdk {
         return binder;
     }
 
-    public boolean getDeviceService() {
-        if (mDeviceService == null) {
-            mDeviceService = AidlDeviceService.Stub.asInterface(getService(ACTION_DEVICE_SERVICE));
-        }
-        return mDeviceService == null ? false : true;
-    }
 
-    @Override
-    public AidlSystem getSystem() {
+    public AidlSystem getSystemManager() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -188,12 +150,11 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlPinpad getPinpad(int type) {
+    public AidlBuzzer getBuzzer() {
         try {
             getDeviceService();
-            if (mDeviceService != null && mDeviceService.getPinPad(type) != null) {
-                return AidlPinpad.Stub.asInterface(mDeviceService.getPinPad(type));
+            if (mDeviceService != null) {
+                return AidlBuzzer.Stub.asInterface(mDeviceService.getBuzzer());
             }
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -201,7 +162,139 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
+    public AidlDecoderManager getDecoder() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlDecoderManager.Stub.asInterface(mDeviceService.getDecoder());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlLed getLed() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlLed.Stub.asInterface(mDeviceService.getLed());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlPinpad getPinpadManager(int devid) {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlPinpad.Stub.asInterface(mDeviceService.getPinPad(devid));
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlPrinter getPrintManager() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlPrinter.Stub.asInterface(mDeviceService.getPrinter());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlTM getAidlTM() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlTM.Stub.asInterface(mDeviceService.getTM());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+    public AidlICCard getICCardReader() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlICCard.Stub.asInterface(mDeviceService.getInsertCardReader());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlRFCard getRfCardReader() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlRFCard.Stub.asInterface(mDeviceService.getRFIDReader());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlPsam getPsamCardReader(int devid) {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlPsam.Stub.asInterface(mDeviceService.getPSAMReader(devid));
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlMagCard getMagCardReader() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlMagCard.Stub.asInterface(mDeviceService.getMagCardReader());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlCPUCard getCPUCardReader() {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlCPUCard.Stub.asInterface(mDeviceService.getCPUCard());
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public AidlSerialport getSerialPort(int port) {
+        try {
+            getDeviceService();
+            if (mDeviceService != null) {
+                return AidlSerialport.Stub.asInterface(mDeviceService.getSerialPort(port));
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public AidlShellMonitor getShellMonitor() {
         try {
             getDeviceService();
@@ -214,12 +307,11 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlICCard getIcc() {
+    public AidlPedestal getPedestal() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
-                return AidlICCard.Stub.asInterface(mDeviceService.getInsertCardReader());
+                return AidlPedestal.Stub.asInterface(mDeviceService.getPedestal());
             }
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -227,34 +319,7 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlRFCard getRf() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlRFCard.Stub.asInterface(mDeviceService.getRFIDReader());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public AidlMagCard getMag() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlMagCard.Stub.asInterface(mDeviceService.getMagCardReader());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public AidlEmvL2 getEmv() {
+    public AidlEmvL2 getEmvL2() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -266,8 +331,7 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlPure getPurePay() {
+    public AidlPure getL2Pure() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -279,8 +343,7 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlPaypass getPaypass() {
+    public AidlPaypass getL2Paypass() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -292,8 +355,7 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlPaywave getPaywave() {
+    public AidlPaywave getL2Paywave() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -305,8 +367,7 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlEntry getEntry() {
+    public AidlEntry getL2Entry() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -318,8 +379,7 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlAmex getAmexPay() {
+    public AidlAmex getL2Amex() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -331,8 +391,7 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlQpboc getUnionPay() {
+    public AidlQpboc getL2Qpboc() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
@@ -344,12 +403,11 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlRupay getRupay() {
+    public AidlCameraScanCode getCameraManager() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
-                return AidlRupay.Stub.asInterface(mDeviceService.getL2Rupay());
+                return AidlCameraScanCode.Stub.asInterface(mDeviceService.getCameraManager());
             }
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -357,12 +415,11 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlMir getMirPay() {
+    public Bundle expandFunction(Bundle param) {
         try {
             getDeviceService();
             if (mDeviceService != null) {
-                return AidlMir.Stub.asInterface(mDeviceService.getL2Mir());
+                return mDeviceService.expandFunction(param);
             }
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -370,103 +427,30 @@ public class AdpLocalManage implements IAdpUsdk {
         return null;
     }
 
-    @Override
-    public AidlDpas getDpasPay() {
+    // zhongfeiyu add pm by 2022/1/11 @{
+    public AidlPM getPm() {
         try {
             getDeviceService();
             if (mDeviceService != null) {
-                return AidlDpas.Stub.asInterface(mDeviceService.getL2Dpas());
+                return AidlPM.Stub.asInterface(mDeviceService.getPM());
             }
         } catch (RemoteException e) {
             e.printStackTrace();
         }
         return null;
     }
+    // @}
 
-    @Override
-    public AidlJcb getJcbPay() {
+    //finger detect
+    public AidlFingerprint getFingerprint(){
         try {
             getDeviceService();
             if (mDeviceService != null) {
-                return AidlJcb.Stub.asInterface(mDeviceService.getL2JCB());
+                return AidlFingerprint.Stub.asInterface(mDeviceService.getFingerprint());
             }
         } catch (RemoteException e) {
             e.printStackTrace();
         }
         return null;
-    }
-
-    @Override
-    public AidlPsam getPsam(int devid) {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPsam.Stub.asInterface(mDeviceService.getPSAMReader(devid));
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public AidlSerialport getSerialport(int port) {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlSerialport.Stub.asInterface(mDeviceService.getSerialPort(port));
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public AidlCPUCard getCpu() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlCPUCard.Stub.asInterface(mDeviceService.getCPUCard());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public AidlCheckCard getCheckCard() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlCheckCard.Stub.asInterface(mDeviceService.getCheckCard());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public void setMode(int mode) {
-
-    }
-
-    @Override
-    public void close() {
-
-    }
-
-    @Override
-    public ICardReader getCardReader() {
-        CardReader cardReader = CardReader.getInstance();
-        return cardReader;
-    }
-
-    @Override
-    public IEmv getEmvHelper() {
-        //TODO: Masih Error
-        return (IEmv) TransProcess.getInstance();
     }
 }

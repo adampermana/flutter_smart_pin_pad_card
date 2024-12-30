@@ -36,21 +36,27 @@ android {
     defaultConfig {
         minSdkVersion 19
     }
-
-    dependencies {
-        implementation files('libs/T1_V2_20240223.jar')
-        implementation files('libs/TopTool_V2_0_2.jar')
-        testImplementation 'junit:junit:4.13.2'
-        testImplementation 'org.mockito:mockito-core:5.1.0'
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
     }
 
     testOptions {
         unitTests.all {
             testLogging {
-               events "passed", "skipped", "failed", "standardOut", "standardError"
-               outputs.upToDateWhen {false}
-               showStandardStreams = true
+                events "passed", "skipped", "failed", "standardOut", "standardError"
+                outputs.upToDateWhen { false }
+                showStandardStreams = true
             }
         }
     }
+}
+dependencies {
+    implementation files('libs/T1_V2_20240223.jar')
+    implementation files('libs/TopTool_V2_0_2.jar')
+    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.9'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.1.0'
 }

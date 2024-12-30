@@ -1,60 +1,134 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.adpstore.flutter_smart_pin_pad_cards_example">
 
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.NFC" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD" /> <!-- 3、密码键盘计算Pinblock权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_BLOCK" /> <!-- 4、密码键盘计算Mac权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_MAC" /> <!-- 5、密码键盘加密数据权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_ENCRYPT_DATA" /> <!-- 6、密码键盘更新终端主密钥权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_MKEY" /> <!-- 7、密码键盘更新⼯作密钥权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_WKEY" /> <!-- 8、访问接触式IC卡读卡设备权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_ICCARD" /> <!-- 9、访问EMV权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_EMVL2" /> <!-- 10、访问⾮接触IC卡读卡设备权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD" /> <!-- 12、获取磁道明⽂接⼜权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETTRACKDATA" /> <!-- 13、获取磁道密⽂数据接⼜权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETENCRYPTTRACKDATA" /> <!-- 14、访问PSAM卡设备权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_SERIALPORT" /> <!-- 16、访问系统设备权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV" /> <!-- 17、设置系统时钟权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_ALARM" /> <!-- 18、访问静默安装权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_CPUCARD" /> <!-- 22、收银机设备权限 -->
-    <uses-permission android:name="android.permission.CLOUDPOS_CASHER" />
+
+    <uses-feature
+        android:name="android.hardware.nfc.hce"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="true" />
+
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FLASHLIGHT" />
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.hardware.usb.host" />
+    <!-- 1、设置打印机权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PRINTER" />
+    <!-- 2、访问密码键盘权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD" />
+    <!-- 3、密码键盘计算Pinblock权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_BLOCK" />
+    <!-- 4、密码键盘计算Mac权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_MAC" />
+    <!-- 5、密码键盘加密数据权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_ENCRYPT_DATA" />
+    <!-- 6、密码键盘更新终端主密钥权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_MKEY" />
+    <!-- 7、密码键盘更新工作密钥权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_WKEY" />
+    <!-- 8、访问接触式IC卡读卡设备权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_ICCARD" />
+    <!-- 9、访问EMV权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_EMVL2" />
+    <!-- 10、访问非接触IC卡读卡设备权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_RFCARD" />
+    <!-- 11、访问磁条卡读卡器设备权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD" />
+    <!-- 12、获取磁道明文接口权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETTRACKDATA" />
+    <!-- 13、获取磁道密文数据接口权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETENCRYPTTRACKDATA" />
+    <!-- 14、访问PSAM卡设备权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_PSAMCARD" />
+    <!-- 15、访问串口设备权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_SERIALPORT" />
+    <!-- 16、访问系统设备权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV" />
+    <!-- 17、设置系统时钟权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_ALARM" />
+    <!-- 18、访问静默安装权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_INSTALL" />
+    <!-- 19、更新终端OS、驱动权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_OS_UPDATE" />
+    <!-- 20、ShellMonitor权限 -->
+    <uses-permission android:name="android.permission.CLOUDPOS_SHELLMONITORDEV" />
 
 
-
-
+    <!--        android:name="${applicationName}"-->
     <application
+        android:name="com.adpstore.flutter_smart_pin_pad_cards.SmartPosApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
         android:label="flutter_smart_pin_pad_cards_example"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
+            android:hardwareAccelerated="true"
             android:launchMode="singleTop"
             android:supportsRtl="true"
             android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
                  to determine the Window background behind the Flutter UI. -->
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Plugin Service for SwipeCard -->
+        <service
+            android:name="com.adpstore.flutter_smart_pin_pad_cards.SwipeCardActivity"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.swipe" />
+            </intent-filter>
+        </service>
+<!--        <service-->
+<!--            android:name="com.adpstore.flutter_smart_pin_pad_cards.SwipeCardActivity"-->
+<!--            android:enabled="true"-->
+<!--            android:exported="true">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.swipe" />-->
+<!--            </intent-filter>-->
+<!--        </service>-->
+
+        <!-- Plugin Service for PinPad -->
+        <!--        <service-->
+        <!--            android:name="com.your.package.name.PinPadService"-->
+        <!--            android:enabled="true"-->
+        <!--            android:exported="true">-->
+        <!--            <intent-filter>-->
+        <!--                <action android:name="android.intent.action.pinpad" />-->
+        <!--            </intent-filter>-->
+        <!--        </service>-->
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
 </manifest>
