@@ -54,7 +54,7 @@ public class SwipeCardActivity extends Activity {
             if (aidlEmvL2 != null) {
                 isInitialized = true;
                 if (isReading) {
-                    startCardReading();
+                    startSwipeCardReading();
                 }
             } else {
                 // If EMV service is null, retry after delay
@@ -64,7 +64,7 @@ public class SwipeCardActivity extends Activity {
                         if (aidlEmvL2 != null) {
                             isInitialized = true;
                             if (isReading) {
-                                startCardReading();
+                                startSwipeCardReading();
                             }
                         } else {
                             sendSingleError("EMV_ERROR", "Failed to initialize EMV service after retry");
@@ -89,7 +89,7 @@ public class SwipeCardActivity extends Activity {
         this.flutterResult = result;
     }
 
-    public void startCardReading() {
+    public void startSwipeCardReading() {
         if (!isInitialized) {
             isReading = true;
             return;
@@ -185,7 +185,7 @@ public class SwipeCardActivity extends Activity {
         isReading = false;
     }
 
-    public void stopCardReading() {
+    public void stopSwipeCardReading() {
         if (aidlEmvL2 != null && isReading) {
             try {
                 aidlEmvL2.cancelCheckCard();
@@ -207,13 +207,13 @@ public class SwipeCardActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        stopCardReading();
+        stopSwipeCardReading();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopCardReading();
+        stopSwipeCardReading();
         aidlEmvL2 = null;
         callback = null;
         flutterResult = null;

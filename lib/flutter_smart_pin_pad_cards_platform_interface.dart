@@ -14,11 +14,11 @@ abstract class FlutterSmartPinPadCardsPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<Map<dynamic, dynamic>> startCardReading() {
+  Future<Map<dynamic, dynamic>> startSwipeCardReading() {
     throw UnimplementedError('startCardReading() has not been implemented.');
   }
 
-  Future<void> stopCardReading() {
+  Future<void> stopSwipeCardReading() {
     throw UnimplementedError('stopCardReading() has not been implemented.');
   }
 }

@@ -26,7 +26,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.hardware.usb.host" />
+
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="true" />
     <!-- 1、设置打印机权限 -->
     <uses-permission android:name="android.permission.CLOUDPOS_PRINTER" />
     <!-- 2、访问密码键盘权限 -->
@@ -85,10 +88,7 @@
             android:supportsRtl="true"
             android:theme="@style/LaunchTheme"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
+
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
@@ -106,29 +106,22 @@
                 <action android:name="android.intent.action.swipe" />
             </intent-filter>
         </service>
-<!--        <service-->
-<!--            android:name="com.adpstore.flutter_smart_pin_pad_cards.SwipeCardActivity"-->
-<!--            android:enabled="true"-->
-<!--            android:exported="true">-->
-<!--            <intent-filter>-->
-<!--                <action android:name="android.intent.action.swipe" />-->
-<!--            </intent-filter>-->
-<!--        </service>-->
+        <!--            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardHandler"-->
+        <service
+            android:name="com.adpstore.flutter_smart_pin_pad_cards.InsertCard"
+            android:enabled="true"
+            android:exported="true">
 
-        <!-- Plugin Service for PinPad -->
-        <!--        <service-->
-        <!--            android:name="com.your.package.name.PinPadService"-->
-        <!--            android:enabled="true"-->
-        <!--            android:exported="true">-->
-        <!--            <intent-filter>-->
-        <!--                <action android:name="android.intent.action.pinpad" />-->
-        <!--            </intent-filter>-->
-        <!--        </service>-->
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        </service>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <meta-data
+            android:name="io.flutter.embedding.android.FlutterActivity"
+            android:value="true" />
+
     </application>
 
 </manifest>

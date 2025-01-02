@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_pin_pad_cards/card_reader_exception.dart';
 import 'package:flutter_smart_pin_pad_cards/flutter_smart_pin_pad_cards.dart';
 
 void main() {
@@ -44,7 +45,7 @@ class _CardReaderScreenState extends State<CardReaderScreen> {
     });
 
     try {
-      final result = await _cardReader.startCardReading();
+      final result = await _cardReader.startSwipeCardReading();
       setState(() {
         _cardData = Map<String, String>.from({
           'Card Number': result['cardNumber'] ?? '',
@@ -75,7 +76,7 @@ class _CardReaderScreenState extends State<CardReaderScreen> {
 
   Future<void> _stopReading() async {
     try {
-      await _cardReader.stopCardReading();
+      await _cardReader.stopSwipeCardReading();
       setState(() {
         _isReading = false;
         _status = 'Card reading stopped';

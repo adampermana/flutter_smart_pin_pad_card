@@ -32,7 +32,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
     channel.setMethodCallHandler(this);
 
     // Initialize device service
-    boolean bindResult = DeviceServiceManager.getInstance().bindDeviceService(context);
+    boolean bindResult = DeviceServiceManagers.getInstance().bindDeviceService(context);
     Log.d(TAG, "Device service bind result: " + bindResult);
 
     // Initialize EMV service
@@ -41,7 +41,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
   private void initializeEmvService() {
     try {
-      aidlEmvL2 = DeviceServiceManager.getInstance().getEmvL2();
+      aidlEmvL2 = DeviceServiceManagers.getInstance().getEmvL2();
       if (aidlEmvL2 == null) {
         Log.e(TAG, "EMV service initialization failed");
       } else {
@@ -58,22 +58,22 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
       case "getPlatformVersion":
         result.success("Android " + android.os.Build.VERSION.RELEASE);
         break;
-      case "startCardReading":
+      case "startSwipeCardReading":
         if (isCardReading) {
           result.error("ALREADY_READING", "Card reader is already active", null);
           return;
         }
-        startCardReading(result);
+        startSwipeCardReading(result);
         break;
-      case "stopCardReading":
-        stopCardReading(result);
+      case "stopSwipeCardReading":
+        stopSwipeCardReading(result);
         break;
       default:
         result.notImplemented();
     }
   }
 
-  private void startCardReading(final Result result) {
+  private void startSwipeCardReading(final Result result) {
     if (aidlEmvL2 == null) {
       initializeEmvService();
       if (aidlEmvL2 == null) {
@@ -141,7 +141,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
     }
   }
 
-  private void stopCardReading(Result result) {
+  private void stopSwipeCardReading(Result result) {
     if (aidlEmvL2 != null && isCardReading) {
       try {
         aidlEmvL2.cancelCheckCard();
@@ -171,7 +171,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
       } catch (RemoteException ignored) {
       }
     }
-    DeviceServiceManager.getInstance().unBindDeviceService();
+    DeviceServiceManagers.getInstance().unBindDeviceService();
     channel.setMethodCallHandler(null);
     aidlEmvL2 = null;
     context = null;
