@@ -106,12 +106,23 @@
                 <action android:name="android.intent.action.swipe" />
             </intent-filter>
         </service>
-        <!--            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardHandler"-->
+<!--            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardHandler"-->
         <service
-            android:name="com.adpstore.flutter_smart_pin_pad_cards.InsertCard"
+            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardReader"
             android:enabled="true"
             android:exported="true">
-
+            <intent-filter>
+                <action android:name="android.intent.action.psamdev" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.pinpaddev" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.pinpad" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.serialportdev" />
+            </intent-filter>
         </service>
 
         <meta-data

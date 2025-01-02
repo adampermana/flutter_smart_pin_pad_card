@@ -14,4 +14,15 @@ class MethodChannelFlutterSmartPinPadCards extends FlutterSmartPinPadCardsPlatfo
   Future<void> stopSwipeCardReading() async {
     await methodChannel.invokeMethod('stopSwipeCardReading');
   }
+
+  @override
+  Future<Map<dynamic, dynamic>> startCardReading() async {
+    final result = await methodChannel.invokeMethod('startCardReading');
+    return Map<dynamic, dynamic>.from(result);
+  }
+
+  @override
+  Future<void> stopCardReading() async {
+    await methodChannel.invokeMethod('stopCardReading');
+  }
 }
