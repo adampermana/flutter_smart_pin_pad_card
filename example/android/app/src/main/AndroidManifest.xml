@@ -70,6 +70,8 @@
     <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_OS_UPDATE" />
     <!-- 20、ShellMonitor权限 -->
     <uses-permission android:name="android.permission.CLOUDPOS_SHELLMONITORDEV" />
+    <uses-permission android:name="android.permission.CLOUDPOS_CASHER" />
+
 
 
     <!--        android:name="${applicationName}"-->
@@ -108,10 +110,21 @@
         </service>
         <!--            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardHandler"-->
         <service
-            android:name="com.adpstore.flutter_smart_pin_pad_cards.InsertCard"
+            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardReader"
             android:enabled="true"
             android:exported="true">
-
+            <intent-filter>
+                <action android:name="android.intent.action.psamdev" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.pinpaddev" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.pinpad" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.serialportdev" />
+            </intent-filter>
         </service>
 
         <meta-data

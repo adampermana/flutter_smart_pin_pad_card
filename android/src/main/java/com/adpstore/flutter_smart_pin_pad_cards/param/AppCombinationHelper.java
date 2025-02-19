@@ -83,16 +83,12 @@ public class AppCombinationHelper {
             //if (aid.isRdClssTxnLimitFlg()) {
             if (!TextUtils.isEmpty(emvAid.getAucRdClssTxnLmt())) {
                 combination.setUcRdClssTxnLmtFlg(EmvErrorCode.CLSS_TAG_EXIST_WITHVAL);
-                if (emvAid.getAid().startsWith("A000000004" )) {
-                    long RdClssTxnLmt = Long.parseLong(emvAid.getAucRdClssTxnLmt());
-                    //For Mastercard - Please set to only Greater than amount will be rejected
-                    String temp = String.format("%012d",(RdClssTxnLmt + 1));
-                    combination.setAucRdClssTxnLmt(BytesUtil.hexString2Bytes(temp));
-                    AppLog.d(TAG, "initData Mastercard RdClssTxnLimit(): " + temp);
-                } else {
-                    combination.setAucRdClssTxnLmt(convert.strToBcd(emvAid.getAucRdClssTxnLmt(), IConvert.EPaddingPosition.PADDING_RIGHT));
-                    AppLog.d(TAG, "initData aid.getRdClssTxnLimit(): " + emvAid.getAucRdClssTxnLmt());
+                if (emvAid.getAid().startsWith("A000000003")) { // Visa
+                    AppLog.d(TAG, "Detected Visa Card");
+                } else if (emvAid.getAid().startsWith("A000000004")) { // Mastercard
+                    AppLog.d(TAG, "Detected Mastercard Card");
                 }
+
             } else {
                 combination.setUcRdClssTxnLmtFlg(EmvErrorCode.CLSS_TAG_NOT_EXIST);
             }

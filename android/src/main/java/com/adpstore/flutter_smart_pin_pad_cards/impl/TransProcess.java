@@ -56,10 +56,10 @@ public class TransProcess implements IEmv {
             AidlEntry entryL2 = DeviceServiceManagers.getInstance().getL2Entry();
             int emvRest = -1;
             byte[] version = new byte[64];
-            /*  int ret = entryL2.getVersion(version, 64);
+              int ret = entryL2.getVersion(version, 64);
                 if (ret == EmvErrorCode.CLSS_OK) {
                 AppLog.d(TAG, "EntryLib Version: " + new String(version).trim());
-            }*/
+            }
 
             emvRest = entryL2.initialize();
             AppLog.d(TAG, "init initialize: " + emvRest);

@@ -9,5 +9,5 @@ public class SysParam {
     private static final String TAG =  SysParam.class.getSimpleName();
     public static String CUST_TID = "12345678";
     public static String Cust_MID = "123456789012345";
-    public static String  COUNTRY_CODE = "0840";
+    public static String  COUNTRY_CODE = "360";
 }

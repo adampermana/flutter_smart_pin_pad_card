@@ -110,12 +110,35 @@ public class ContactLessProcess extends ABaseTransProcess {
 
                     @Override
                     public boolean onConfirmPan(String pan) {
-                        AppLog.d(TAG, "onConfirmPan ======" + pan);
+                        if (pan == null || pan.isEmpty()) {
+                            Log.e(TAG, "Nomor kartu tidak ditemukan, mencoba mendapatkan dari TLV 0x5A...");
+                            byte[] panData = aClssKernelBaseTrans.getTLV(0x5A);
+                            if (panData != null) {
+                                pan = BytesUtil.bytes2HexString(panData);
+                                Log.d(TAG, "Nomor kartu dari TLV: " + pan);
+                            } else {
+                                Log.e(TAG, "Gagal mendapatkan nomor kartu");
+                                return false;
+                            }
+                        }
+
+                        Log.d(TAG, "onConfirmPan berhasil dengan PAN: " + pan);
+
                         if (emvProcessListener != null) {
                             return emvProcessListener.onConfirmCardInfo(pan);
                         }
+
                         return false;
                     }
+
+//                    @Override
+//                    public boolean onConfirmPan(String pan) {
+//                        AppLog.d(TAG, "onConfirmPan ======" + pan);
+//                        if (emvProcessListener != null) {
+//                            return emvProcessListener.onConfirmCardInfo(pan);
+//                        }
+//                        return false;
+//                    }
 
                     @Override
                     public EmvPinEnter onReqImportPin(EPinType ePinType) {

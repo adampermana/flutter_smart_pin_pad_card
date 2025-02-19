@@ -122,8 +122,8 @@ public class EmvTransPraram {
         this.transNo = transNo;
     }
 
-    public String getCountryCode() {
-        return countryCode;
+    public String getCountryCode(String countryCode) {
+        return this.countryCode;
     }
 
     public void setCountryCode(String countryCode) {

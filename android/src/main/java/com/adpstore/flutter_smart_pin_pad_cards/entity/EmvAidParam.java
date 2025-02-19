@@ -915,7 +915,7 @@ public class EmvAidParam {
      * @param emvAidParam
      * @return
      */
-    private static TlvList genTlvListForAidParam(EmvAidParam emvAidParam) {
+    public static TlvList genTlvListForAidParam(EmvAidParam emvAidParam) {
         IConvert convert = TopTool.getInstance().getConvert();
         TlvList tlvList = new TlvList();
         tlvList.addTlv("9F53", "01");

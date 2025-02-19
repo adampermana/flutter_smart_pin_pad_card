@@ -1,15 +1,21 @@
 package com.adpstore.flutter_smart_pin_pad_cards.impl;
 
+import static android.content.ContentValues.TAG;
+
+import com.adpstore.flutter_smart_pin_pad_cards.AppLog;
 import com.adpstore.flutter_smart_pin_pad_cards.ITransProcessListener;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvAidParam;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvOnlineResp;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvPinEnter;
 import com.adpstore.flutter_smart_pin_pad_cards.enums.EKernelType;
+import com.adpstore.flutter_smart_pin_pad_cards.enums.EOnlineResult;
 import com.adpstore.flutter_smart_pin_pad_cards.enums.EPinType;
+import com.adpstore.flutter_smart_pin_pad_cards.param.AidParam;
 import com.topwise.cloudpos.aidl.emv.level2.Combination;
 import com.topwise.cloudpos.aidl.emv.level2.EmvCandidateItem;
 import com.topwise.cloudpos.aidl.emv.level2.EmvCapk;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -60,9 +66,21 @@ public class ETransProcessListenerImpl implements ITransProcessListener {
         return false;
     }
 
+    //    @Override
+//    public EmvOnlineResp onReqOnlineProc()  {
+//        return new EmvOnlineResp();
+//    }
     @Override
-    public EmvOnlineResp onReqOnlineProc()  {
-        return new EmvOnlineResp();
+    public EmvOnlineResp onReqOnlineProc() {
+        EmvOnlineResp resp = new EmvOnlineResp();
+        resp.seteOnlineResult(EOnlineResult.ONLINE_APPROVE);
+
+        // Set auth response code "00" (approved)
+        byte[] authRespCode = new byte[]{0x30, 0x30}; // "00" in ASCII
+        resp.setAuthRespCode(authRespCode);
+        resp.setExistAuthRespCode(true);
+
+        return resp;
     }
 
 
@@ -71,14 +89,45 @@ public class ETransProcessListenerImpl implements ITransProcessListener {
         return false;
     }
 
-    @Override
-    public List<Combination> onLoadCombinationParam() {
-        return null;
-    }
+//    @Override
+//    public List<Combination> onLoadCombinationParam() {
+//        return null;
+//    }
 
     @Override
+    public List<Combination> onLoadCombinationParam() {
+        List<Combination> combinations = new ArrayList<>();
+        try {
+            // Add Visa combination
+            Combination visa = new Combination();
+            visa.setUcAidLen((byte) 7);
+            visa.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10});
+            visa.setUcKernIDLen((byte) 1);
+            visa.setAucKernelID(new byte[]{(byte) 0x03});
+            combinations.add(visa);
+
+            // Add Mastercard combination
+            Combination mc = new Combination();
+            mc.setUcAidLen((byte) 7);
+            mc.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10});
+            mc.setUcKernIDLen((byte) 1);
+            mc.setAucKernelID(new byte[]{(byte) 0x02});
+            combinations.add(mc);
+
+        } catch (Exception e) {
+            AppLog.e(TAG, "Error creating combinations: " + e.getMessage());
+        }
+        return combinations;
+    }
+
+    //    @Override
+//    public EmvAidParam onFindCurAidParamProc(String sAid) {
+//        return null;
+//    }
+    @Override
     public EmvAidParam onFindCurAidParamProc(String sAid) {
-        return null;
+        // Return AID param from already initialized list
+        return AidParam.getCurrentAidParam(sAid);
     }
 
     @Override

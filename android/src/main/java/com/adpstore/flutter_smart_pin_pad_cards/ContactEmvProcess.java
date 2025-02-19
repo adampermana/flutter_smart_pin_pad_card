@@ -33,7 +33,7 @@ import java.util.List;
  * Author: Adam Permana
  */
 public class ContactEmvProcess extends ABaseTransProcess {
-    private static final String TAG = ContactEmvProcess.class.getSimpleName();
+    private static final String TAG = "ContactEmvProcess";
     private ITransProcessListener emvProcessListener;
     private AidlPinpad pinPad = DeviceServiceManagers.getInstance().getPinpadManager(0);
     private AidlEmvL2 emvL2 = DeviceServiceManagers.getInstance().getEmvL2();
@@ -282,7 +282,7 @@ public class ContactEmvProcess extends ABaseTransProcess {
                 EmvOnlineResp emvOnlineResp = emvProcessListener.onReqOnlineProc();
                 AppLog.d(TAG, "emvProcess ProcessListener onRequestOnline emvEntity : " + emvOnlineResp.toString());
 
-                // No need second GAC, check authRespCode and abort here
+                // NosetAuthRespCode need second GAC, check authRespCode and abort here
                 if (!emvTransData.isbSup2GAC()) { // add by wwc 2022 01 20 增加是否试下2GAC判断
                     String authRespCodes = BytesUtil.bytes2HexString(emvOnlineResp.getAuthRespCode());
                     if ("3030".equals(authRespCodes)) {

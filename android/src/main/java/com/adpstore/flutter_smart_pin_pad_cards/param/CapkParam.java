@@ -62,9 +62,9 @@ public class CapkParam extends LoadParam<EmvCapkParam>{
     public List<String> init(Context context) {
         long l = System.currentTimeMillis();
         try {
-            String name = "";
-            name = CAPKNAME;
-            InputStream open = context.getResources().getAssets().open(name);
+//            String name = "";
+//            name = CAPKNAME;
+            InputStream open = context.getResources().getAssets().open(CAPKNAME);
             DocumentBuilderFactory docFact = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuidler = null;
             Document doc = null;
@@ -102,7 +102,7 @@ public class CapkParam extends LoadParam<EmvCapkParam>{
             AppLog.e(TAG,"EmvCapkParam getEmvCapkParam no find " + rid + " bCapkIndex =" + BytesUtil.byte2HexString(bCapkIndex) + " CAPK" );
             return null;
         }
-        AppLog.e(TAG,"EmvCapkParam getEmvCapkParam 0000000000001 " + capk.toString());
+        AppLog.e(TAG,"EmvCapkParam getEmvCapkParam" + capk.toString());
 
         EmvCapk emvCapk = new EmvCapk();
         emvCapk.setRID(BytesUtil.hexString2Bytes(capk.getRID()));

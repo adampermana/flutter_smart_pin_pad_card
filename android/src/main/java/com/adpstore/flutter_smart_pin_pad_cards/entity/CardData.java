@@ -1,25 +1,6 @@
-/*============================================================
- Module Name       : CardData.java
- Date of Creation  : 18/12/2024
- Name of Creator   : Adam Permana
- History of Modifications:
- 18/12/2024- Lorem Ipsum
-
- Summary           :
-
-
- Functions         :
- -
-
- Variables         :
- -
-
- ============================================================*/
-
 package com.adpstore.flutter_smart_pin_pad_cards.entity;
 
 public class CardData {
-
     /**
      * Card type
      */
@@ -51,6 +32,16 @@ public class CardData {
      * Track 3 data
      */
     private String track3;
+
+    /**
+     * ICC specific data
+     */
+    private byte[] iccData;
+
+    /**
+     * ICC card serial number
+     */
+    private String iccSerialNumber;
 
     private String pan = "";
 
@@ -109,6 +100,40 @@ public class CardData {
                     ", msg='" + msg + '\'' +
                     '}';
         }
+    }
+
+    // Existing getters and setters...
+
+    /**
+     * Get ICC data
+     * @return byte array containing ICC data
+     */
+    public byte[] getIccData() {
+        return iccData;
+    }
+
+    /**
+     * Set ICC data
+     * @param iccData byte array containing ICC data
+     */
+    public void setIccData(byte[] iccData) {
+        this.iccData = iccData;
+    }
+
+    /**
+     * Get ICC card serial number
+     * @return String containing ICC serial number
+     */
+    public String getIccSerialNumber() {
+        return iccSerialNumber;
+    }
+
+    /**
+     * Set ICC card serial number
+     * @param iccSerialNumber String containing ICC serial number
+     */
+    public void setIccSerialNumber(String iccSerialNumber) {
+        this.iccSerialNumber = iccSerialNumber;
     }
 
     public EReturnType getEreturnType() {
@@ -175,14 +200,24 @@ public class CardData {
         this.serviceCode = serviceCode;
     }
 
+    @Override
     public String toString() {
-        return "CardData{" +
-                "eReturnType=" + eReturnType.toString() +
-                ", eCardType=" + eCardType +
-                ", track1='" + track1 + '\'' +
-                ", track2='" + track2 + '\'' +
-                ", track3='" + track3 + '\'' +
-                '}';
-    }
+        StringBuilder sb = new StringBuilder();
+        sb.append("CardData{")
+                .append("eReturnType=").append(eReturnType.toString())
+                .append(", eCardType=").append(eCardType)
+                .append(", track1='").append(track1).append('\'')
+                .append(", track2='").append(track2).append('\'')
+                .append(", track3='").append(track3).append('\'');
 
+        if (eCardType == ECardType.IC) {
+            sb.append(", iccSerialNumber='").append(iccSerialNumber).append('\'');
+            if (iccData != null) {
+                sb.append(", iccDataLength=").append(iccData.length);
+            }
+        }
+
+        sb.append('}');
+        return sb.toString();
+    }
 }
