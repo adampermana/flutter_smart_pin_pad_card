@@ -70,17 +70,31 @@ public class ETransProcessListenerImpl implements ITransProcessListener {
 //    public EmvOnlineResp onReqOnlineProc()  {
 //        return new EmvOnlineResp();
 //    }
+//    @Override
+//    public EmvOnlineResp onReqOnlineProc() {
+//        EmvOnlineResp resp = new EmvOnlineResp();
+//        resp.seteOnlineResult(EOnlineResult.ONLINE_APPROVE);
+//
+//        // Set auth response code "00" (approved)
+//        byte[] authRespCode = new byte[]{0x30, 0x30}; // "00" in ASCII
+//        resp.setAuthRespCode(authRespCode);
+//        resp.setExistAuthRespCode(true);
+//
+//        return resp;
+//    }
+
     @Override
     public EmvOnlineResp onReqOnlineProc() {
         EmvOnlineResp resp = new EmvOnlineResp();
-        resp.seteOnlineResult(EOnlineResult.ONLINE_APPROVE);
-
-        // Set auth response code "00" (approved)
-        byte[] authRespCode = new byte[]{0x30, 0x30}; // "00" in ASCII
-        resp.setAuthRespCode(authRespCode);
-        resp.setExistAuthRespCode(true);
-
-        return resp;
+        try {
+            // Set basic response parameters
+            resp.seteOnlineResult(EOnlineResult.ONLINE_APPROVE);
+            // Set other required parameters
+            return resp;
+        } catch (Exception e) {
+            AppLog.e(TAG, "Error creating online response: " + e.getMessage());
+            return new EmvOnlineResp(); // Return default response instead of null
+        }
     }
 
 

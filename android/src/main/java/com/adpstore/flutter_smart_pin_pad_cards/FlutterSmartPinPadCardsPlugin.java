@@ -8,20 +8,8 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.content.Context;
 
-import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvAidParam;
-import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvOnlineResp;
-import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvPinEnter;
-import com.adpstore.flutter_smart_pin_pad_cards.enums.ECVMStatus;
-import com.adpstore.flutter_smart_pin_pad_cards.enums.EKernelType;
-import com.adpstore.flutter_smart_pin_pad_cards.enums.EOnlineResult;
-import com.adpstore.flutter_smart_pin_pad_cards.enums.EPinType;
-import com.adpstore.flutter_smart_pin_pad_cards.param.AidParam;
-import com.adpstore.flutter_smart_pin_pad_cards.param.CapkParam;
 import com.topwise.cloudpos.aidl.emv.AidlCheckCardListener;
 import com.topwise.cloudpos.aidl.emv.level2.AidlEmvL2;
-import com.topwise.cloudpos.aidl.emv.level2.Combination;
-import com.topwise.cloudpos.aidl.emv.level2.EmvCandidateItem;
-import com.topwise.cloudpos.aidl.emv.level2.EmvCapk;
 import com.topwise.cloudpos.aidl.magcard.TrackData;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.CardData;
 
@@ -31,9 +19,7 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallHandler {
@@ -53,9 +39,11 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "flutter_smart_pin_pad_cards");
         channel.setMethodCallHandler(this);
         mainHandler = new Handler(Looper.getMainLooper());
+
         // Initialize device service
         boolean bindResult = DeviceServiceManagers.getInstance().bindDeviceService(context);
         Log.d(TAG, "Device service bind result: " + bindResult);
+
         // Initialize EMV service and Card Reader
         initializeServices();
     }
@@ -69,6 +57,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             } else {
                 Log.d(TAG, "EMV service initialized successfully");
             }
+
             // Initialize Card Reader
             cardReader = DeviceServiceManagers.getInstance().getCardReader();
             if (cardReader == null) {
@@ -87,6 +76,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             case "getPlatformVersion":
                 result.success("Android " + android.os.Build.VERSION.RELEASE);
                 break;
+
             case "startSwipeCardReading":
                 if (isCardReading) {
                     result.error("ALREADY_READING", "Card reader is already active", null);
@@ -94,205 +84,79 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 }
                 startSwipeCardReading(result);
                 break;
+
             case "stopSwipeCardReading":
                 stopSwipeCardReading(result);
                 break;
+
             case "startInsertCardReading":
                 if (isCardReading) {
                     result.error("ALREADY_READING", "Card reader is already active", null);
                     return;
                 }
-                startInsertCardReading(call, result);
+                handleStartCardReading(call, result);
                 break;
+
             case "stopInsertCardReading":
                 handleStopCardReading(result);
                 break;
+
             default:
                 result.notImplemented();
         }
     }
 
-
-    private void startInsertCardReading(MethodCall call, final Result result) {
+    private void handleStartCardReading(MethodCall call, final Result result) {
         if (cardReader == null) {
             result.error("INIT_ERROR", "Card reader not initialized", null);
             return;
         }
-
-        // Set context dan inisialisasi
-        CardReader cardReaderInstance = CardReader.getInstance();
-        cardReaderInstance.setContext(context);
-
-        // Initialize transaction process listener
-        ITransProcessListener processListener = new ITransProcessListener() {
-            @Override
-            public int onReqAppAidSelect(String[] aids) {
-                // Default: return index 0 if available
-                if (aids != null && aids.length > 0) {
-                    Log.d(TAG, "Selecting first available AID");
-                    return 0;
-                }
-                return -1;
-            }
-
-            @Override
-            public void onUpToAppEmvCandidateItem(EmvCandidateItem emvCandidateItem) {
-                Log.d(TAG, "Selected candidate item: " + emvCandidateItem.toString());
-            }
-
-            @Override
-            public void onUpToAppKernelType(EKernelType eKernelType) {
-                Log.d(TAG, "Kernel type: " + eKernelType.toString());
-            }
-
-            @Override
-            public boolean onReqFinalAidSelect() {
-                return true;
-            }
-
-            @Override
-            public EmvOnlineResp onReqOnlineProc() {
-                EmvOnlineResp resp = new EmvOnlineResp();
-                resp.seteOnlineResult(EOnlineResult.ONLINE_APPROVE);
-
-                // Set auth response code "00" for approval
-                byte[] authRespCode = new byte[]{0x30, 0x30}; // "00" in ASCII
-                resp.setAuthRespCode(authRespCode);
-                resp.setExistAuthRespCode(true);
-                return resp;
-            }
-
-            @Override
-            public List<Combination> onLoadCombinationParam() {
-                List<Combination> combinations = new ArrayList<>();
-                try {
-                    // Add Visa combination
-                    Combination visa = new Combination();
-                    visa.setUcAidLen((byte) 7);
-                    visa.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10});
-                    visa.setUcKernIDLen((byte) 1);
-                    visa.setAucKernelID(new byte[]{(byte) 0x03});
-                    combinations.add(visa);
-
-                    // Add Mastercard combination
-                    Combination mc = new Combination();
-                    mc.setUcAidLen((byte) 7);
-                    mc.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10});
-                    mc.setUcKernIDLen((byte) 1);
-                    mc.setAucKernelID(new byte[]{(byte) 0x02});
-                    combinations.add(mc);
-
-                } catch (Exception e) {
-                    Log.e(TAG, "Error creating combinations: " + e.getMessage());
-                }
-                return combinations;
-            }
-
-            @Override
-            public EmvAidParam onFindCurAidParamProc(String sAid) {
-                return AidParam.getCurrentAidParam(sAid);
-            }
-
-            @Override
-            public boolean onConfirmCardInfo(String cardNo) {
-                Log.d(TAG, "Confirming card number: " + cardNo);
-                return true;
-            }
-
-            @Override
-            public EmvPinEnter onReqGetPinProc(EPinType pinType, int leftTimes) {
-                EmvPinEnter pinEnter = new EmvPinEnter();
-                pinEnter.setEcvmStatus(ECVMStatus.ENTER_BYPASS);
-                return pinEnter;
-            }
-
-            @Override
-            public boolean onDisplayPinVerifyStatus(int PinTryCounter) {
-                Log.d(TAG, "PIN try counter: " + PinTryCounter);
-                return true;
-            }
-
-            @Override
-            public boolean onReqUserAuthProc(int certype, String certnumber) {
-                return true;
-            }
-
-            @Override
-            public boolean onSecCheckCardProc() {
-                return false;
-            }
-
-            @Override
-            public void onRemoveCardProc() {
-                Log.d(TAG, "Card removal requested");
-            }
-
-            @Override
-            public EmvCapk onFindIssCapkParamProc(String sAid, byte bCapkIndex) {
-                try {
-                    CapkParam capkParam = new CapkParam();
-                    capkParam.init(context);
-                    capkParam.saveAll();
-                    // Menggunakan getEmvCapkParam yang benar
-                    return CapkParam.getEmvCapkParam(sAid, bCapkIndex);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error loading CAPK: " + e.getMessage());
-                    return null;
-                }
-            }
-        };
-
-        // Set listener ke emv helper
-        IEmv emvHelper = DeviceServiceManagers.getInstance().getEmvHelper();
-        emvHelper.setProcessListener(processListener);
-
 
         Map<String, Object> arguments = call.arguments();
         boolean enableMag = (boolean) arguments.get("enableMag");
         boolean enableIcc = (boolean) arguments.get("enableIcc");
         boolean enableRf = (boolean) arguments.get("enableRf");
         int timeout = (int) arguments.get("timeout");
+
         isCardReading = true;
         pendingResult = result;
+
         cardReader.startFindCard(enableMag, enableIcc, enableRf, timeout, new CardReader.onReadCardListener() {
             @Override
-            public void getReadState(CardData cardData) {
-                if (cardData.getEreturnType() == CardData.EReturnType.OK) {
-                    Map<String, Object> resultMap = new HashMap<>();
-                    resultMap.put("cardType", cardData.getEcardType().toString());
-                    switch (cardData.getEcardType()) {
-                        case MAG:
+            public void getReadState(final CardData cardData) {
+                mainHandler.post(() -> {
+                    if (cardData != null && cardData.getEreturnType() == CardData.EReturnType.OK) {
+                        Map<String, Object> resultMap = new HashMap<>();
+
+                        // Pastikan data kartu dimasukkan ke map
+                        resultMap.put("cardType", cardData.getEcardType().toString());
+                        resultMap.put("pan", cardData.getPan());
+                        resultMap.put("expiryDate", cardData.getExpiryDate());
+                        resultMap.put("serviceCode", cardData.getServiceCode());
+
+                        if (cardData.getTrack1() != null) {
                             resultMap.put("track1", cardData.getTrack1());
+                        }
+                        if (cardData.getTrack2() != null) {
                             resultMap.put("track2", cardData.getTrack2());
+                        }
+                        if (cardData.getTrack3() != null) {
                             resultMap.put("track3", cardData.getTrack3());
-                            resultMap.put("pan", cardData.getPan());
-                            resultMap.put("expiryDate", cardData.getExpiryDate());
-                            resultMap.put("serviceCode", cardData.getServiceCode());
-                            break;
-                        case IC:
-                            // Handle IC card specific data if needed
-                            resultMap.put("pan", cardData.getPan());
-                            resultMap.put("expiryDate", cardData.getExpiryDate());
-                            resultMap.put("serviceCode", cardData.getServiceCode());
-                            resultMap.put("track1", cardData.getTrack1());
-                            resultMap.put("track2", cardData.getTrack2());
-                            break;
-                        case RF:
-                            // Handle RF card specific data if needed
-                            break;
-                    }
-                    mainHandler.post(() -> {
+                        }
+
+                        Log.d(TAG, "Card data retrieved: " + resultMap.toString());
+
                         isCardReading = false;
                         if (pendingResult != null) {
                             pendingResult.success(resultMap);
                             pendingResult = null;
                         }
-                    });
-                } else {
-                    mainHandler.post(() -> {
-                        sendError("READ_ERROR", "Failed to read card: " + cardData.getEreturnType().toString());
-                    });
-                }
+                    } else {
+                        String error = (cardData != null) ?
+                                cardData.getEreturnType().toString() : "Unknown error";
+                        sendError("READ_ERROR", "Failed to read card: " + cardData.getEreturnType().toString() + error);
+                    }
+                });
             }
 
             @Override
@@ -303,21 +167,25 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                             sendError("MULTI_CARD", "Multiple RF cards detected");
                         });
                         break;
+
                     case OPEN_MAG_ERR:
                         mainHandler.post(() -> {
                             sendError("MAG_ERROR", "Failed to open magnetic card reader");
                         });
                         break;
+
                     case OPEN_IC_ERR:
                         mainHandler.post(() -> {
                             sendError("IC_ERROR", "Failed to open IC card reader");
                         });
                         break;
+
                     case OPEN_RF_ERR:
                         mainHandler.post(() -> {
                             sendError("RF_ERROR", "Failed to open RF card reader");
                         });
                         break;
+
                     default:
                         mainHandler.post(() -> {
                             sendError("UNKNOWN_ERROR", "Unknown error occurred: " + eReturnType.toString());
@@ -346,10 +214,11 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 return;
             }
         }
+
         try {
             isCardReading = true;
             pendingResult = result;
-            // Swipe Card
+
             aidlEmvL2.checkCard(true, false, false, TIME_OUT, new AidlCheckCardListener.Stub() {
                 @Override
                 public void onFindMagCard(TrackData trackData) throws RemoteException {
@@ -360,6 +229,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                     cardData.put("cardNumber", trackData.getCardno());
                     cardData.put("expiryDate", trackData.getExpiryDate());
                     cardData.put("serviceCode", trackData.getServiceCode());
+
                     isCardReading = false;
                     if (pendingResult != null) {
                         pendingResult.success(cardData);
@@ -439,6 +309,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 cardReader.cancel();
             }
         }
+
         DeviceServiceManagers.getInstance().unBindDeviceService();
         channel.setMethodCallHandler(null);
         aidlEmvL2 = null;

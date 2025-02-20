@@ -19,10 +19,8 @@
 package com.adpstore.flutter_smart_pin_pad_cards;
 
 import android.content.Context;
-import android.os.Handler;
 import android.os.RemoteException;
 import android.os.SystemClock;
-import android.util.Log;
 
 import com.adpstore.flutter_smart_pin_pad_cards.entity.CardData;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.EinputType;
@@ -31,18 +29,15 @@ import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvOnlineResp;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvOutCome;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvPinEnter;
 import com.adpstore.flutter_smart_pin_pad_cards.entity.EmvTransPraram;
-import com.adpstore.flutter_smart_pin_pad_cards.entity.TransData;
 import com.adpstore.flutter_smart_pin_pad_cards.enums.EKernelType;
 import com.adpstore.flutter_smart_pin_pad_cards.enums.EPinType;
 import com.adpstore.flutter_smart_pin_pad_cards.enums.ETransStatus;
 import com.adpstore.flutter_smart_pin_pad_cards.param.AidParam;
 import com.adpstore.flutter_smart_pin_pad_cards.param.CapkParam;
-import com.adpstore.flutter_smart_pin_pad_cards.param.SysParam;
 import com.adpstore.flutter_smart_pin_pad_cards.utils.CardTimer;
 import com.topwise.cloudpos.aidl.emv.level2.Combination;
 import com.topwise.cloudpos.aidl.emv.level2.EmvCandidateItem;
 import com.topwise.cloudpos.aidl.emv.level2.EmvCapk;
-import com.topwise.cloudpos.aidl.emv.level2.EmvKernelConfig;
 import com.topwise.cloudpos.aidl.emv.level2.EmvTerminalInfo;
 import com.topwise.cloudpos.aidl.iccard.AidlICCard;
 import com.topwise.cloudpos.aidl.magcard.AidlMagCard;
@@ -76,10 +71,7 @@ public class CardReader implements ICardReader {
     private byte mResultCode;
     private byte[] mResultData;
     private boolean bCloseAll;
-
-    private Context context; // Add this field at class level
-
-
+    private Context context;
     private AidlMagCard magCard = DeviceServiceManagers.getInstance().getMagCardReader();
     private AidlICCard icCard = DeviceServiceManagers.getInstance().getICCardReader();
     private AidlRFCard rfCard = DeviceServiceManagers.getInstance().getRfCardReader();
@@ -107,32 +99,6 @@ public class CardReader implements ICardReader {
             e.printStackTrace();
             AppLog.e(TAG, "openMag: false ==============");
             return false;
-        }
-    }
-
-    public void setContext(Context context) {
-        if (context == null) {
-            AppLog.e(TAG, "Attempting to set null context");
-            return;
-        }
-        this.context = context;
-        AppLog.d(TAG, "Context set to CardReader");
-
-        // Initialize AID params when context is set
-        try {
-            // Initialize AID params
-            AidParam aidParam = new AidParam();
-            aidParam.init(context);
-            aidParam.saveAll();
-            AppLog.d(TAG, "Successfully initialized AID params");
-
-            // Initialize CAPK params
-            CapkParam capkParam = new CapkParam();
-            capkParam.init(context);
-            capkParam.saveAll();
-            AppLog.d(TAG, "Successfully initialized CAPK params");
-        } catch (Exception e) {
-            AppLog.e(TAG, "Error initializing params: " + e.getMessage());
         }
     }
 
@@ -211,10 +177,6 @@ public class CardReader implements ICardReader {
         }
     }
 
-    private void setupTerminalInfo(EmvTerminalInfo terminalInfo) {
-        terminalInfo.setUcTerminalEntryMode((byte) 0x05); // Contact IC card mode
-    }
-
     @Override
     public void startFindCard(boolean isMag, boolean isIcc, boolean isRf, int outtime,
                               onReadCardListener onReadCardListener) {
@@ -261,12 +223,6 @@ public class CardReader implements ICardReader {
      *
      */
     class FindCardThread extends Thread {
-        private IEmv emv;
-        private TransData transData;
-        private Handler handler;
-        private Context context;
-
-
         @Override
         public void run() {
             CloseAll();
@@ -280,7 +236,6 @@ public class CardReader implements ICardReader {
                 }
             }
             if (isIcc && !openIc()) {
-//                gotoEmv();
                 if (onReadCardListener != null) {
                     CloseAll();
                     setResult(new CardData(CardData.EReturnType.OPEN_IC_ERR));
@@ -370,8 +325,6 @@ public class CardReader implements ICardReader {
                     }
                 }
                 //ic
-                // Di dalam class FindCardThread, update bagian IC card:
-
                 if (isIcc) {
                     try {
                         if (icCard.isExist()) {
@@ -380,83 +333,70 @@ public class CardReader implements ICardReader {
                                 closeMag();
                                 closeRf();
 
-                                // Inisialisasi EMV
                                 IEmv emvHelper = DeviceServiceManagers.getInstance().getEmvHelper();
                                 emvHelper.init(EinputType.CT);
-
-                                // Set Process Listener
-                                // Update bagian ITransProcessListener di dalam handleStartCardReading:
-
-                                // Di dalam method startCardReading, update implementasi ITransProcessListener
 
                                 emvHelper.setProcessListener(new ITransProcessListener() {
                                     @Override
                                     public int onReqAppAidSelect(String[] aids) {
-                                        // Default: return index 0 if available
                                         if (aids != null && aids.length > 0) {
                                             AppLog.d(TAG, "Selecting AID index: 0");
-                                            return 0;  // Return index of selected AID
+                                            return 0;
                                         }
-                                        return -1;  // No selection
+                                        return -1;
                                     }
 
                                     @Override
                                     public void onUpToAppEmvCandidateItem(EmvCandidateItem emvCandidateItem) {
-                                        // Handle selected candidate item notification
                                         if (emvCandidateItem != null) {
-                                            AppLog.d(TAG, "Selected candidate item: " + emvCandidateItem.toString());
+                                            AppLog.d(TAG, "Selected candidate item: " + emvCandidateItem);
                                         }
                                     }
 
                                     @Override
                                     public void onUpToAppKernelType(EKernelType eKernelType) {
-                                        // Handle kernel type notification
-                                        AppLog.d(TAG, "Kernel type: " + eKernelType.toString());
+                                        AppLog.d(TAG, "Kernel type: " + eKernelType);
                                     }
 
                                     @Override
                                     public boolean onReqFinalAidSelect() {
-                                        // Allow final AID selection
                                         return true;
                                     }
 
                                     @Override
                                     public boolean onConfirmCardInfo(String cardNo) {
-                                        // Auto confirm card number
                                         AppLog.d(TAG, "Confirming card number: " + cardNo);
                                         return true;
                                     }
 
                                     @Override
                                     public EmvPinEnter onReqGetPinProc(EPinType pinType, int leftTimes) {
-                                        // Handle PIN entry request
                                         AppLog.d(TAG, "PIN request - Type: " + pinType + ", Tries left: " + leftTimes);
-                                        return null; // Return PIN data if needed
+                                        return null;
                                     }
 
                                     @Override
                                     public boolean onDisplayPinVerifyStatus(int PinTryCounter) {
-                                        // Display PIN verification status
                                         AppLog.d(TAG, "PIN try counter: " + PinTryCounter);
                                         return true;
                                     }
 
                                     @Override
                                     public boolean onReqUserAuthProc(int certype, String certnumber) {
-                                        // Handle certificate authorization
                                         AppLog.d(TAG, "Certificate auth - Type: " + certype + ", Number: " + certnumber);
                                         return true;
                                     }
 
                                     @Override
                                     public EmvOnlineResp onReqOnlineProc() {
-                                        // Handle online processing request
-                                        return null;
+                                        EmvOnlineResp onlineResp = new EmvOnlineResp();
+                                        onlineResp.setAuthRespCode("00".getBytes()); // Menggunakan setAuthRespCode
+                                        return onlineResp;
                                     }
+
 
                                     @Override
                                     public boolean onSecCheckCardProc() {
-                                        // Handle second card check
                                         return false;
                                     }
 
@@ -464,7 +404,6 @@ public class CardReader implements ICardReader {
                                     public List<Combination> onLoadCombinationParam() {
                                         List<Combination> combinations = new ArrayList<>();
                                         try {
-                                            // Add JCB combination
                                             Combination jcb = new Combination();
                                             jcb.setUcAidLen((byte) 7);
                                             jcb.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x65, 0x10, 0x10});
@@ -472,7 +411,6 @@ public class CardReader implements ICardReader {
                                             jcb.setAucKernelID(new byte[]{(byte) 0x0B});
                                             combinations.add(jcb);
 
-                                            // Add Visa combination
                                             Combination visa = new Combination();
                                             visa.setUcAidLen((byte) 7);
                                             visa.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10});
@@ -480,7 +418,6 @@ public class CardReader implements ICardReader {
                                             visa.setAucKernelID(new byte[]{(byte) 0x03});
                                             combinations.add(visa);
 
-                                            // Add Mastercard combination
                                             Combination mc = new Combination();
                                             mc.setUcAidLen((byte) 7);
                                             mc.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10});
@@ -498,10 +435,11 @@ public class CardReader implements ICardReader {
                                     public EmvAidParam onFindCurAidParamProc(String sAid) {
                                         // Load AID parameters from aid.xml
                                         try {
+                                            EmvAidParam emvAidParam = new EmvAidParam();
                                             AidParam aidParam = new AidParam();
                                             aidParam.init(context);
+                                            emvAidParam.setAid(sAid);
                                             aidParam.saveAll();
-                                            EmvAidParam emvAidParam = new EmvAidParam();
                                             // Set AID parameters based on sAid
                                             return emvAidParam;
                                         } catch (Exception e) {
@@ -509,10 +447,17 @@ public class CardReader implements ICardReader {
                                             return null;
                                         }
                                     }
+//                                    public EmvAidParam onFindCurAidParamProc(String sAid) {
+//                                        EmvAidParam emvAidParam = new EmvAidParam();
+//                                        emvAidParam.setAid(sAid);
+//                                        emvAidParam.("00000000");
+//                                        emvAidParam.setTacOnline("DC4004F800");
+//                                        emvAidParam.setTacDefault("DC4000A800");
+//                                        return emvAidParam;
+//                                    }
 
                                     @Override
                                     public void onRemoveCardProc() {
-                                        // Handle card removal notification
                                         AppLog.d(TAG, "Card removal requested");
                                     }
 
@@ -533,33 +478,25 @@ public class CardReader implements ICardReader {
                                     }
                                 });
 
-                                // Set terminal info
                                 EmvTerminalInfo terminalInfo = new EmvTerminalInfo();
-                                terminalInfo.setUcTerminalType((byte) 0x22);  // Terminal Type
-                                terminalInfo.setUcTerminalEntryMode((byte) 0x05);  // IC + magstripe
+                                terminalInfo.setUcTerminalType((byte) 0x22);
+                                terminalInfo.setUcTerminalEntryMode((byte) 0x05);
                                 emvHelper.setTerminalInfo(terminalInfo);
 
-                                // Set transaction parameters
-                                EmvTransPraram transParam = new EmvTransPraram((byte) 0x00);  // Purchase
-//                                transParam.setAmount(0L);  // Amount in cents
-                                transParam.getAucUnNumber();
-                                transParam.getCountryCode(SysParam.COUNTRY_CODE);
-
-//                                transParam.setAucTransDate("230101");  // YYMMDD
-//                                transParam.setAucTransTime("235959");  // HHMMSS
+                                EmvTransPraram transParam = new EmvTransPraram((byte) 0x00);
+                                transParam.setAmount(1000L);
+                                transParam.setAucTransDate("250220");
+                                transParam.setAucTransTime("120000");
                                 emvHelper.setTransPraram(transParam);
 
-                                // Start EMV process
                                 EmvOutCome emvOutCome = emvHelper.StartEmvProcess();
-                                AppLog.d(TAG, "EMV Process result: " + emvOutCome.toString());
+                                AppLog.d(TAG, "EMV Process result: " + emvOutCome);
 
                                 if (emvOutCome.geteTransStatus() == ETransStatus.ONLINE_APPROVE ||
                                         emvOutCome.geteTransStatus() == ETransStatus.OFFLINE_APPROVE) {
 
-                                    // Get card data
                                     cardData = new CardData(CardData.EReturnType.OK, CardData.ECardType.IC);
 
-                                    // Get PAN
                                     byte[] panData = emvHelper.getTlv(0x5A);
                                     if (panData != null && panData.length > 0) {
                                         String pan = BytesUtil.bytes2HexString(panData).replace("F", "");
@@ -567,7 +504,6 @@ public class CardReader implements ICardReader {
                                         AppLog.d(TAG, "Card PAN: " + pan);
                                     }
 
-                                    // Get expiry date
                                     byte[] expiryData = emvHelper.getTlv(0x5F24);
                                     if (expiryData != null && expiryData.length >= 2) {
                                         String expiry = BytesUtil.bytes2HexString(expiryData);
@@ -575,7 +511,6 @@ public class CardReader implements ICardReader {
                                         AppLog.d(TAG, "Expiry date: " + expiry);
                                     }
 
-                                    // Get track2
                                     byte[] track2Data = emvHelper.getTlv(0x57);
                                     if (track2Data != null && track2Data.length > 0) {
                                         String track2 = BytesUtil.bytes2HexString(track2Data);
@@ -588,12 +523,11 @@ public class CardReader implements ICardReader {
                                     AppLog.e(TAG, "EMV process failed: " + emvOutCome.geteTransStatus());
                                     setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
                                 }
-                                return;
+
                             } else {
                                 CloseAll();
                                 AppLog.e(TAG, "IC Card reset failed");
                                 setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
-                                return;
                             }
                         }
                     } catch (Exception e) {
@@ -601,9 +535,9 @@ public class CardReader implements ICardReader {
                         CloseAll();
                         AppLog.e(TAG, "IC Card Exception: " + e.getMessage());
                         setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
-                        return;
                     }
                 }
+
                 //rf
                 if (isRf) {
                     try {
@@ -638,56 +572,6 @@ public class CardReader implements ICardReader {
                 SystemClock.sleep(20);
             }
         }
-
-//        private void gotoEmv() {
-//            {
-//
-//                /**********1，init Emv Terminal data ************/
-//                EmvTerminalInfo emvTerminalInfo = EmvResultUtlis.setEmvTerminalInfo();
-//
-//                /**********2，init Emv transaction params ************/
-//                EmvTransPraram emvTransPraram = new EmvTransPraram(EmvTags.checkKernelTransType(transData));
-//                String transCurCode = SysParam.COUNTRY_CODE;
-//                emvTransPraram.setAucTransCurCode(transCurCode);
-//
-//                /**********3，init Emv kernel config  ************/
-//                EmvKernelConfig emvKernelConfig = EmvResultUtlis.setEmvKernelConfig();
-//
-//                emv = DeviceServiceManagers.getInstance().getEmvHelper();
-//                emv.setProcessListener(new EmvTransProcessImpl(context, transData, emv, handler));
-//                emv.setTerminalInfo(emvTerminalInfo);
-//                emv.setTransPraram(emvTransPraram);
-//                emv.setKernelConfig(emvKernelConfig);
-//
-//                /**********4，start Emv process  ************/
-//                EmvOutCome emvOutCome = emv.StartEmvProcess();
-//
-//                /**********5，handle Emv result  ************/
-//                if (ETransStatus.ONLINE_APPROVE == emvOutCome.geteTransStatus() ||
-//                        ETransStatus.OFFLINE_APPROVE == emvOutCome.geteTransStatus()) {
-//                    AppLog.i(TAG, "Emv Process Success");
-//                } else if (ETransStatus.ONLINE_REQUEST == emvOutCome.geteTransStatus()) {
-//                    AppLog.i(TAG, "Emv Process Success");
-//                } else {
-//                    AppLog.e(TAG, "Emv Process fail");
-//                }
-//            }
-//        }
-
-//        public void onInitCAPK() {
-//            try {
-//                List<String> list;
-//                CapkParam capkParam = new CapkParam();
-//                capkParam.init(context);
-//                capkParam.saveAll();
-//
-//                AidParam aidParam = new AidParam();
-//                aidParam.init(context);
-//                aidParam.saveAll();
-//            } catch (Exception e) {
-//                Log.e(TAG, "Error initializing CAPK: " + e.getMessage());
-//            }
-//        }
     }
 
     /**
