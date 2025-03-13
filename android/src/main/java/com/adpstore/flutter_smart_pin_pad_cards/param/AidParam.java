@@ -136,6 +136,14 @@ public class AidParam extends LoadParam<EmvAidParam> {
             if (emvAidParam != null) {
                 break;
             }
+            // Try specific GPN matching if it's a GPN card
+            if (aid.startsWith("A0000006")) {
+                // Try generic GPN AID
+                emvAidParam = getAidFromList("A0000006020000");
+                if (emvAidParam != null) {
+                    return emvAidParam;
+                }
+            }
         }
         if (emvAidParam == null) {
            AppLog.e(TAG,"getCurrentAidParam  Unable to match AID parameters ====" + aid);

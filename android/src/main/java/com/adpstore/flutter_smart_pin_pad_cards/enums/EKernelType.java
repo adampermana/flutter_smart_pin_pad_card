@@ -47,6 +47,7 @@ public enum EKernelType {
     KERNTYPE_PBOC((byte) 0xE1, "PBOC", "A000000333"),
     KERNTYPE_NSICC((byte) 0xE2, "NSICC", ""),
     KERNTYPE_RFU((byte) 0xFF, "RFU", ""),
+    KERNTYPE_GPN((byte) 0x15, "GPN", "A000000602"), // Added GPN kernel type
     ;
 
     private static final EKernelType[] VALUES = EKernelType.values();

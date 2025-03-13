@@ -17,6 +17,7 @@ import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransAmexPay;
 import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransDpasPay;
 import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransJcbPay;
 import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransMirPay;
+import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransPayGPN;
 import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransPayPass;
 import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransPayWave;
 import com.adpstore.flutter_smart_pin_pad_cards.transmit.TransPurePay;
@@ -354,6 +355,8 @@ public class ContactLessProcess extends ABaseTransProcess {
                 return new TransRuPay();
             case EmvErrorCode.KERNTYPE_JCB:
                 return new TransJcbPay();
+            case EmvErrorCode.KERNTYPE_GPN:
+                return new TransPayGPN();
             default:
                 return null;
         }
