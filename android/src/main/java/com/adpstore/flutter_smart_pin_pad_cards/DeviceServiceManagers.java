@@ -533,7 +533,7 @@ public class DeviceServiceManagers {
 
 
     public ICardReader getCardReader() {
-        CardReader cardReader = CardReader.getInstance();
+        CardReader cardReader = CardReader.getInstance(mContext);
         return cardReader;
     }
 

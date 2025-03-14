@@ -385,9 +385,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
     private void startSwipeCardReading(final Result result) {
 
         if (aidlEmvL2 == null) {
-
-            initializeServices();
-
             if (aidlEmvL2 == null) {
 
                 result.error("START_ERROR", "Card reader hardware not available", null);

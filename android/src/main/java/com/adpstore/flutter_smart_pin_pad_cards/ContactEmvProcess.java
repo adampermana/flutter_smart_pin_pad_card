@@ -76,8 +76,7 @@ public class ContactEmvProcess extends ABaseTransProcess {
                 int selectedAppIndex = 0;
                 // Get candidate app list size
                 candListCount = emvL2.EMV_AppGetCandListCount();
-                if ((candListCount > 1) && (EmvErrorCode.EMV_TRUE == emvKernelConfig.getbCardHolderConfirm())) {
-                    String strDisplayName[] = new String[candListCount];
+                if ((candListCount > 1) && (emvKernelConfig != null && EmvErrorCode.EMV_TRUE == emvKernelConfig.getbCardHolderConfirm())) {                    String strDisplayName[] = new String[candListCount];
                     // Get all candidate app display names
                     for (int i = 0; i < candListCount; i++) {
                         EmvCandidateItem emvCandidateItem = emvL2.EMV_AppGetCandListItem(i);

@@ -149,16 +149,16 @@ public class CardReader implements ICardReader {
     private AidlShellMonitor aidlShellMonitor = DeviceServiceManagers.getInstance().getShellMonitor();
 
 
-    private CardReader() {
-
+    private CardReader(Context context) {
+        this.context = context;
     }
 
 
-    public synchronized static CardReader getInstance() {
+    public synchronized static CardReader getInstance(Context context) {
 
         if (instance == null) {
 
-            instance = new CardReader();
+            instance = new CardReader(context);
 
         }
 
@@ -742,71 +742,39 @@ public class CardReader implements ICardReader {
                                         List<Combination> combinations = new ArrayList<>();
 
                                         try {
-
+                                            //JCB
                                             Combination jcb = new Combination();
-
                                             jcb.setUcAidLen((byte) 7);
-
                                             jcb.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x65, 0x10, 0x10});
-
                                             jcb.setUcKernIDLen((byte) 1);
-
                                             jcb.setAucKernelID(new byte[]{(byte) 0x0B});
-
                                             combinations.add(jcb);
 
-
+                                            //Visa
                                             Combination visa = new Combination();
-
                                             visa.setUcAidLen((byte) 7);
-
                                             visa.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10});
-
                                             visa.setUcKernIDLen((byte) 1);
-
                                             visa.setAucKernelID(new byte[]{(byte) 0x03});
-
                                             combinations.add(visa);
 
+                                            //MasterCard
+                                            Combination masterCard = new Combination();
+                                            masterCard.setUcAidLen((byte) 7);
+                                            masterCard.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10});
+                                            masterCard.setUcKernIDLen((byte) 1);
+                                            masterCard.setAucKernelID(new byte[]{(byte) 0x02});
+                                            combinations.add(masterCard);
 
-                                            Combination mc = new Combination();
+                                            // Add GPN
+                                            Combination gpnFull = new Combination();
+                                            gpnFull.setUcAidLen((byte) 7); // Full AID length for A0000006021010
+                                            gpnFull.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x06, 0x02, 0x10, 0x10});
+                                            gpnFull.setUcKernIDLen((byte) 1);
+                                            gpnFull.setAucKernelID(new byte[]{(byte) 0x15}); // GPN kernel ID
+                                            combinations.add(gpnFull);
 
-                                            mc.setUcAidLen((byte) 7);
 
-                                            mc.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10});
-
-                                            mc.setUcKernIDLen((byte) 1);
-
-                                            mc.setAucKernelID(new byte[]{(byte) 0x02});
-
-                                            combinations.add(mc);
-
-                                            // GPN INDONESIA
-                                            // In the onLoadCombinationParam method:
-
-// Current GPN
-                                            Combination gpn = new Combination();
-                                            gpn.setUcAidLen((byte) 7);
-                                            gpn.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x06, 0x02, 0x00, 0x00});
-                                            gpn.setUcKernIDLen((byte) 1);
-                                            gpn.setAucKernelID(new byte[]{(byte) 0x15});
-                                            combinations.add(gpn);
-
-// BSI Specific AID with length 8
-                                            Combination bsi = new Combination();
-                                            bsi.setUcAidLen((byte) 8);
-                                            bsi.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x06, 0x02, 0x10, 0x10, 0x02});
-                                            bsi.setUcKernIDLen((byte) 1);
-                                            bsi.setAucKernelID(new byte[]{(byte) 0x15});
-                                            combinations.add(bsi);
-
-// Add GPN with partial matching (RID only)
-                                            Combination gpnRidOnly = new Combination();
-                                            gpnRidOnly.setUcAidLen((byte) 5);
-                                            gpnRidOnly.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x06, 0x02});
-                                            gpnRidOnly.setUcKernIDLen((byte) 1);
-                                            gpnRidOnly.setAucKernelID(new byte[]{(byte) 0x15});
-                                            combinations.add(gpnRidOnly);
                                         } catch (Exception e) {
 
                                             AppLog.e(TAG, "Error creating combinations: " + e.getMessage());
@@ -830,22 +798,6 @@ public class CardReader implements ICardReader {
 
                                             AidParam aidParam = new AidParam();
 
-                                            if (context != null) {
-                                                aidParam.init(context);
-                                            } else {
-                                                AppLog.e(TAG, "Context is null when loading AID params!");
-
-                                                // Fallback default parameters for GPN cards
-                                                if (sAid.startsWith("A000000602")) {
-                                                    // Set mandatory parameters for GPN cards
-                                                    emvAidParam.setAucTACDefault("D84000A800");
-                                                    emvAidParam.setAucTACOnline("D84004F800");
-                                                    emvAidParam.setAucTACDenail("0000000000");
-                                                    // Return with basic params so process can continue
-                                                    return emvAidParam;
-                                                }
-                                            }
-
                                             aidParam.init(context);
 
                                             emvAidParam.setAid(sAid);
@@ -866,25 +818,7 @@ public class CardReader implements ICardReader {
 
                                     }
 
-                                    //                                    public EmvAidParam onFindCurAidParamProc(String sAid) {
-
-                                    //                                        EmvAidParam emvAidParam = new EmvAidParam();
-
-                                    //                                        emvAidParam.setAid(sAid);
-
-                                    //                                        emvAidParam.("00000000");
-
-                                    //                                        emvAidParam.setTacOnline("DC4004F800");
-
-                                    //                                        emvAidParam.setTacDefault("DC4000A800");
-
-                                    //                                        return emvAidParam;
-
-                                    //                                    }
-
-
                                     @Override
-
                                     public void onRemoveCardProc() {
 
                                         AppLog.d(TAG, "Card removal requested");
@@ -945,77 +879,59 @@ public class CardReader implements ICardReader {
                                 emvHelper.setTransPraram(transParam);
 
 
-                                EmvOutCome emvOutCome = emvHelper.StartEmvProcess();
+                                // In the CardReader.java file, inside the EMV process section, modify the error handling:
 
+                                EmvOutCome emvOutCome = emvHelper.StartEmvProcess();
                                 AppLog.d(TAG, "EMV Process result: " + emvOutCome);
 
+// Check for valid PAN data first, regardless of EMV outcome
+                                byte[] panData = emvHelper.getTlv(0x5A);
+                                String pan = null;
+                                if (panData != null && panData.length > 0) {
+                                    pan = BytesUtil.bytes2HexString(panData).replace("F", "");
+                                    AppLog.d(TAG, "Card PAN detected: " + pan);
 
-                                if (emvOutCome.geteTransStatus() == ETransStatus.ONLINE_APPROVE ||
-
-                                        emvOutCome.geteTransStatus() == ETransStatus.OFFLINE_APPROVE) {
-
-
+                                    // Create card data object with IC type
                                     cardData = new CardData(CardData.EReturnType.OK, CardData.ECardType.IC);
+                                    cardData.setPan(pan);
 
-
-                                    byte[] panData = emvHelper.getTlv(0x5A);
-
-                                    if (panData != null && panData.length > 0) {
-
-                                        String pan = BytesUtil.bytes2HexString(panData).replace("F", "");
-
-                                        cardData.setPan(pan);
-
-                                        AppLog.d(TAG, "Card PAN: " + pan);
-
-                                    }
-
-
+                                    // Try to get expiry date
                                     byte[] expiryData = emvHelper.getTlv(0x5F24);
-
                                     if (expiryData != null && expiryData.length >= 2) {
-
                                         String expiry = BytesUtil.bytes2HexString(expiryData);
-
                                         cardData.setExpiryDate(expiry);
-
                                         AppLog.d(TAG, "Expiry date: " + expiry);
-
                                     }
 
-
+                                    // Try to get track2 data
                                     byte[] track2Data = emvHelper.getTlv(0x57);
-
                                     if (track2Data != null && track2Data.length > 0) {
-
                                         String track2 = BytesUtil.bytes2HexString(track2Data);
-
                                         cardData.setTrack2(track2);
-
                                         AppLog.d(TAG, "Track2: " + track2);
-
                                     }
 
-
+                                    // Since we have a valid PAN, return successful result
                                     setResult(cardData);
+                                    return;
+                                }
 
-                                } else {
-
-                                    AppLog.e(TAG, "EMV process failed: " + emvOutCome.geteTransStatus());
-
+// Handle the case when no PAN was found but EMV process succeeded
+                                if (emvOutCome.geteTransStatus() == ETransStatus.ONLINE_APPROVE ||
+                                        emvOutCome.geteTransStatus() == ETransStatus.OFFLINE_APPROVE) {
+                                    // This is already handled above if PAN exists
+                                    AppLog.e(TAG, "EMV process succeeded but no PAN found");
                                     setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
-
+                                } else {
+                                    AppLog.e(TAG, "EMV process failed: " + emvOutCome.geteTransStatus());
+                                    setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
                                 }
 
 
                             } else {
-
                                 CloseAll();
-
                                 AppLog.e(TAG, "IC Card reset failed");
-
                                 setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
-
                             }
 
                         }
