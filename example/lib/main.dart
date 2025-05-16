@@ -1,8 +1,9 @@
-// example/lib/main.dart
-
 import 'package:flutter/material.dart';
-import 'package:flutter_smart_pin_pad_cards/card_reader_exception.dart';
 import 'package:flutter_smart_pin_pad_cards/flutter_smart_pin_pad_cards.dart';
+
+// Import the card reader dialog
+// (Assume this is saved in a file named card_reader_dialog.dart)
+import 'card_reader_dialog.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,95 +32,40 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Map<String, dynamic> _cardData = {};
-  String _errorMessage = '';
-  bool _isReading = false;
+  bool _dialogShown = false;
+  bool _isProcessComplete = false;
+  bool _isServiceRunning = false;
 
-  // Start reading card with swipe method
-  Future<void> _startSwipeCardReading() async {
-    if (_isReading) return;
+  @override
+  void initState() {
+    super.initState();
+    // Service starts immediately when app opens
+    _isServiceRunning = true;
 
-    setState(() {
-      _isReading = true;
-      _errorMessage = '';
-      _cardData = {};
+    // Start the card reading process when the app opens
+    // Slight delay to ensure the context is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showCardReaderDialog();
     });
-
-    try {
-      final result = await FlutterSmartPinPadCards.startSwipeCardReading();
-      setState(() {
-        _cardData = Map<String, dynamic>.from(result);
-      });
-    } on CardReaderException catch (e) {
-      setState(() {
-        _errorMessage = '${e.code}: ${e.message}';
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Unexpected error: $e';
-      });
-    } finally {
-      setState(() {
-        _isReading = false;
-      });
-    }
   }
 
-  // Start reading inserted card
-  Future<void> _startCardReading() async {
-    if (_isReading) return;
+  Future<void> _showCardReaderDialog() async {
+    if (_dialogShown) return;
 
     setState(() {
-      _isReading = true;
-      _errorMessage = '';
-      _cardData = {};
+      _dialogShown = true;
     });
 
-    try {
-      final result = await FlutterSmartPinPadCards.startInsertCardReading(
-        enableIcc: true,
-        enableMag: false,
-        enableRf: false,
-      );
-      print('Card reading result: $result'); // Debug print
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // User must respond to the dialog
+      builder: (context) => const CardReaderDialog(),
+    );
 
-      setState(() {
-        _cardData = Map<String, dynamic>.from(result);
-      });
-    } on CardReaderException catch (e) {
-      setState(() {
-        _errorMessage = '${e.code}: ${e.message}';
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Unexpected error: $e';
-      });
-    } finally {
-      setState(() {
-        _isReading = false;
-      });
-    }
-  }
-
-  // Stop card reading
-  Future<void> _stopReading() async {
-    if (!_isReading) return;
-
-    try {
-      await FlutterSmartPinPadCards.stopCardReading();
-    } on CardReaderException catch (e) {
-      setState(() {
-        _errorMessage = '${e.code}: ${e.message}';
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Unexpected error: $e';
-      });
-    } finally {
-      setState(() {
-        _isReading = false;
-      });
-    }
+    setState(() {
+      _isProcessComplete = result == true;
+      _dialogShown = false;
+    });
   }
 
   @override
@@ -128,223 +74,78 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: const Text('Smart Pin Pad Cards Demo'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Buttons
-            ElevatedButton(
-              onPressed: _isReading ? null : _startSwipeCardReading,
-              child: Text(_isReading ? 'Reading...' : 'Start Swipe Card Reading'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _isReading ? null : _startCardReading,
-              child: Text(_isReading ? 'Reading...' : 'Read Inserted Card'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _isReading ? _stopReading : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+            if (_isProcessComplete) ...[
+              const Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 80,
               ),
-              child: const Text('Stop Reading'),
-            ),
-            const SizedBox(height: 16),
-
-            // Error message
-            if (_errorMessage.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(8),
-                color: Colors.red[100],
-                child: Text(
-                  _errorMessage,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-
-            const SizedBox(height: 16),
-
-            // Card data display
-            if (_cardData.isNotEmpty) ...[
+              const SizedBox(height: 16),
               const Text(
-                'Card Data:',
+                'PIN Verification Successful!',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Card(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _cardData.entries.map((entry) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                entry.key,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(entry.value?.toString() ?? 'N/A'),
-                              const Divider(),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _showCardReaderDialog,
+                child: const Text('Read Another Card'),
+              ),
+            ] else if (_dialogShown) ...[
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text(
+                'Card Reader Active',
+                style: TextStyle(
+                  fontSize: 20,
                 ),
               ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
-
-
-class CardReaderWidget extends StatefulWidget {
-  const CardReaderWidget({Key? key}) : super(key: key);
-
-  @override
-  State<CardReaderWidget> createState() => _CardReaderWidgetState();
-}
-
-class _CardReaderWidgetState extends State<CardReaderWidget> {
-  String? _cardNumber;
-  String? _errorMessage;
-  bool _isReading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _startCardReading();
-  }
-
-  Future<void> _startCardReading() async {
-    if (_isReading) return;
-
-    setState(() {
-      _isReading = true;
-      _errorMessage = null;
-      _cardNumber = null;
-    });
-
-    try {
-      // Start card reading with IC card enabled
-      final result = await FlutterSmartPinPadCards.startInsertCardReading(
-        enableMag: false,
-        enableIcc: true,
-        enableRf: false,
-        timeout: 60000,
-      );
-
-      setState(() {
-        _cardNumber = result['pan'] as String?;
-        _isReading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isReading = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    // Stop card reading when widget is disposed
-    FlutterSmartPinPadCards.stopCardReading();
-    super.dispose();
-  }
-
-  String _formatCardNumber(String? number) {
-    if (number == null || number.isEmpty) return '';
-
-    // Format card number with spaces every 4 digits
-    final buffer = StringBuffer();
-    for (int i = 0; i < number.length; i++) {
-      if (i > 0 && i % 4 == 0) {
-        buffer.write(' ');
-      }
-      buffer.write(number[i]);
-    }
-    return buffer.toString();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Card Reader',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+              const SizedBox(height: 8),
+              const Text(
+                'Please insert or swipe your card...',
+                style: TextStyle(
+                  fontSize: 16,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            if (_isReading) ...[
-              const CircularProgressIndicator(),
-              const SizedBox(height: 8),
-              const Text('Please insert your card...'),
-            ] else if (_errorMessage != null) ...[
-              Icon(Icons.error, color: Theme.of(context).colorScheme.error),
-              const SizedBox(height: 8),
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ] else ...[
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.credit_card,
+                    color: Colors.blue,
+                    size: 32,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _isServiceRunning
+                        ? 'Card Reader Service Running'
+                        : 'Card Reader Service Inactive',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Insert your card to begin the verification process',
+                style: TextStyle(fontSize: 16),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _startCardReading,
-                child: const Text('Try Again'),
-              ),
-            ] else if (_cardNumber != null) ...[
-              const Icon(Icons.credit_card, size: 48),
-              const SizedBox(height: 8),
-              const Text(
-                'Card Number:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatCardNumber(_cardNumber),
-                style: const TextStyle(
-                  fontSize: 18,
-                  letterSpacing: 1.2,
+              if (!_dialogShown)
+                ElevatedButton(
+                  onPressed: _showCardReaderDialog,
+                  child: const Text('Open Card Reader Dialog'),
                 ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _startCardReading,
-                child: const Text('Read Another Card'),
-              ),
-            ] else ...[
-              const Text('Waiting for card reader to initialize...'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _startCardReading,
-                child: const Text('Start Reading'),
-              ),
             ],
           ],
         ),
