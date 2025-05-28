@@ -2,19 +2,25 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'card_reader_exception.dart';
+import 'card_data.dart';
 
 class FlutterSmartPinPadCards {
   static const MethodChannel _channel =
-      MethodChannel('flutter_smart_pin_pad_cards');
+  MethodChannel('flutter_smart_pin_pad_cards');
 
-  /// Starts the card reading process
-  /// Returns a Map containing card data if successful
-  /// Throws a PlatformException if there's an error
-  static Future<Map<dynamic, dynamic>> startSwipeCardReading() async {
+  /// Starts the card reading process for magnetic swipe cards
+  /// Returns a CardData object if successful
+  /// Throws a CardReaderException if there's an error
+  static Future<CardData> startSwipeCardReading() async {
     try {
       final Map<dynamic, dynamic> result =
-          await _channel.invokeMethod('startSwipeCardReading');
-      return result;
+      await _channel.invokeMethod('startSwipeCardReading');
+
+      // Konversi hasil ke format yang diharapkan
+      Map<String, dynamic> processedResult = _processResult(result);
+
+      // Buat objek CardData dari hasil yang sudah diproses
+      return CardData.fromMap(processedResult);
     } on PlatformException catch (e) {
       throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
     }
@@ -37,9 +43,9 @@ class FlutterSmartPinPadCards {
   /// - enableIcc: Enable IC card reading
   /// - enableRf: Enable RF card reading
   /// - timeout: Timeout in milliseconds (default 60000)
-  /// Returns a Map containing card data if successful
+  /// Returns a CardData object if successful
   /// Throws a CardReaderException if there's an error
-  static Future<Map<dynamic, dynamic>> startInsertCardReading({
+  static Future<CardData> startInsertCardReading({
     bool enableMag = false,
     bool enableIcc = false,
     bool enableRf = false,
@@ -56,26 +62,14 @@ class FlutterSmartPinPadCards {
         },
       );
 
-      print('Card Number: ${result['pan']}');
-      print('Expiry Date: ${result['expiryDate']}');
-      // For IC cards, we need to extract PAN through the EMV transaction process
-      // if (result.containsKey('cardType') && result['cardType'] == 'IC') {
-      //   // This should be handled in the native code and returned properly
-      //   if (result.containsKey('emvData') && result['emvData'] is Map) {
-      //     Map<dynamic, dynamic> emvData = result['emvData'];
-      //     if (emvData.containsKey('pan')) {
-      //       result['pan'] = emvData['pan']; // Extract PAN from EMV data
-      //     }
-      //   }
-      // }
+      // Log hasil untuk debugging
+      print('Card Reading Result: $result');
 
-      if (result.containsKey('pan')) {
-        String cardNumber = result['pan'];
-        print('Card Number: $cardNumber');
-      } else {
-        print('No card number found in the response');
-      }
-      return result;
+      // Konversi hasil ke format yang diharapkan
+      Map<String, dynamic> processedResult = _processResult(result);
+
+      // Buat objek CardData dari hasil yang sudah diproses
+      return CardData.fromMap(processedResult);
     } on PlatformException catch (e) {
       throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
     }
@@ -91,6 +85,39 @@ class FlutterSmartPinPadCards {
       throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
     }
   }
-}
 
-/// Custom exception for card reader errors
+  /// Helper method to process the result from method channel
+  /// and convert it to a consistent format
+  static Map<String, dynamic> _processResult(Map<dynamic, dynamic> result) {
+    // Konversi keys dari dynamic ke String
+    Map<String, dynamic> processedResult = {};
+
+    result.forEach((key, value) {
+      if (key is String) {
+        processedResult[key] = value;
+      }
+    });
+
+    // Standardisasi keys untuk PAN/cardNumber
+    if (processedResult.containsKey('pan') && !processedResult.containsKey('cardNumber')) {
+      processedResult['cardNumber'] = processedResult['pan'];
+    } else if (processedResult.containsKey('cardNumber') && !processedResult.containsKey('pan')) {
+      processedResult['pan'] = processedResult['cardNumber'];
+    }
+
+    // Handle EMV data untuk kartu IC jika diperlukan
+    if (processedResult.containsKey('cardType') &&
+        processedResult['cardType'] == 'IC' &&
+        processedResult.containsKey('emvData')) {
+      // Ekstrak data tambahan dari EMV jika diperlukan
+      var emvData = processedResult['emvData'];
+      if (emvData is Map && emvData.containsKey('pan') &&
+          (processedResult['pan'] == null || processedResult['pan'].isEmpty)) {
+        processedResult['pan'] = emvData['pan'];
+        processedResult['cardNumber'] = emvData['pan'];
+      }
+    }
+
+    return processedResult;
+  }
+}

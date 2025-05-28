@@ -36,11 +36,14 @@
 package com.adpstore.flutter_smart_pin_pad_cards;
 
 
+import android.app.Service;
 import android.content.Context;
-
+import android.content.Intent;
+import android.os.Binder;
+import android.os.IBinder;
 import android.os.RemoteException;
-
 import android.os.SystemClock;
+import androidx.annotation.Nullable;
 
 
 import com.adpstore.flutter_smart_pin_pad_cards.entity.CardData;
@@ -99,7 +102,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 
-public class CardReader implements ICardReader {
+public class CardReader extends Service implements ICardReader {
 
     private static final String TAG = "CardReader";
 
@@ -147,6 +150,25 @@ public class CardReader implements ICardReader {
     private AidlRFCard rfCard = DeviceServiceManagers.getInstance().getRfCardReader();
 
     private AidlShellMonitor aidlShellMonitor = DeviceServiceManagers.getInstance().getShellMonitor();
+
+    private final IBinder binder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        CardReader getService() {
+            return CardReader.this;
+        }
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return binder;
+    }
+
+
+    // Required public constructor
+    public CardReader() {
+    }
 
 
     private CardReader(Context context) {
@@ -884,7 +906,7 @@ public class CardReader implements ICardReader {
                                 EmvOutCome emvOutCome = emvHelper.StartEmvProcess();
                                 AppLog.d(TAG, "EMV Process result: " + emvOutCome);
 
-// Check for valid PAN data first, regardless of EMV outcome
+                                // Check for valid PAN data first, regardless of EMV outcome
                                 byte[] panData = emvHelper.getTlv(0x5A);
                                 String pan = null;
                                 if (panData != null && panData.length > 0) {
@@ -916,7 +938,7 @@ public class CardReader implements ICardReader {
                                     return;
                                 }
 
-// Handle the case when no PAN was found but EMV process succeeded
+                                // Handle the case when no PAN was found but EMV process succeeded
                                 if (emvOutCome.geteTransStatus() == ETransStatus.ONLINE_APPROVE ||
                                         emvOutCome.geteTransStatus() == ETransStatus.OFFLINE_APPROVE) {
                                     // This is already handled above if PAN exists
@@ -1250,6 +1272,24 @@ public class CardReader implements ICardReader {
 
         AppLog.e(TAG, "CloseAll ===");
 
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        // Initialize any service-related resources here if needed
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // Handle service start command if needed
+        return START_NOT_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        cancel();
     }
 
 

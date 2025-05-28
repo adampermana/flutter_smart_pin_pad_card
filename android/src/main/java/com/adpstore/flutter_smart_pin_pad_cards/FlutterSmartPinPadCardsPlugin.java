@@ -147,7 +147,9 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
                 if (isCardReading) {
 
-                    result.error("ALREADY_READING", "Card reader is already active", null);
+//                    result.error("ALREADY_READING", "Card reader is already active", null);
+                    Log.i(TAG, "===== startSwipeCardReading initializing services: Card reader is already active" + null);
+
 
                     return;
 
@@ -161,6 +163,8 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             case "stopSwipeCardReading":
 
                 stopSwipeCardReading(result);
+                Log.i(TAG, "===== stopSwipeCardReading services:" + null);
+
 
                 break;
 
@@ -168,8 +172,9 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             case "startInsertCardReading":
 
                 if (isCardReading) {
+                    Log.i(TAG, "===== startInsertCardReading services:" + null);
 
-                    result.error("ALREADY_READING", "Card reader is already active", null);
+//                    result.error("ALREADY_READING", "Card reader is already active", null);
 
                     return;
 
@@ -372,6 +377,8 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             isCardReading = false;
 
             result.success(null);
+            Log.i(TAG, "===== stopInsertCardReading services:" + null);
+
 
         } else {
 

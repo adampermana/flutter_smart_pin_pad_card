@@ -1,8 +1,11 @@
 package com.adpstore.flutter_smart_pin_pad_cards;
 
-import android.app.Activity;
+import android.app.Service;
+import android.content.Intent;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.os.RemoteException;
 import android.util.Log;
@@ -12,9 +15,11 @@ import com.topwise.cloudpos.aidl.emv.level2.AidlEmvL2;
 import com.topwise.cloudpos.aidl.magcard.TrackData;
 import com.topwise.cloudpos.service.DeviceServiceManager;
 
+import org.jetbrains.annotations.Nullable;
+
 import io.flutter.plugin.common.MethodChannel;
 
-public class SwipeCardActivity extends Activity {
+public class SwipeCardActivity extends Service {
     private static final String TAG = "SwipeCardActivity";
     private AidlEmvL2 aidlEmvL2;
     private final static int TIME_OUT = 60 * 1000;
@@ -23,16 +28,34 @@ public class SwipeCardActivity extends Activity {
     private boolean isInitialized = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private CardReadCallback callback;
+    private final IBinder binder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        SwipeCardActivity getService() {
+            return SwipeCardActivity.this;
+        }
+    }
 
     public interface CardReadCallback {
         void onCardRead(TrackData trackData);
+
         void onCardReadError(String errorCode, String errorMessage);
     }
 
+    // Required public empty constructor
+    public SwipeCardActivity() {
+    }
+
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onCreate() {
+        super.onCreate();
         initializeDeviceService();
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return binder;
     }
 
     private void initializeDeviceService() {
@@ -196,22 +219,15 @@ public class SwipeCardActivity extends Activity {
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (aidlEmvL2 == null) {
-            initializeDeviceService();
-        }
-    }
+
+//    @Override
+//    protected void onPause() {
+//        super.onPause();
+//        stopSwipeCardReading();
+//    }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        stopSwipeCardReading();
-    }
-
-    @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         super.onDestroy();
         stopSwipeCardReading();
         aidlEmvL2 = null;

@@ -79,7 +79,7 @@
         android:name="com.adpstore.flutter_smart_pin_pad_cards.SmartPosApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="flutter_smart_pin_pad_cards_example"
+        android:label="BANK JATENG"
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
