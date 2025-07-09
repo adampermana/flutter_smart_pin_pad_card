@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 // import 'package:flutter_localizations/flutter_localizations.dart';
 import 'card_reader_dialog.dart';
+import 'dummy.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -123,6 +124,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.green,
                   label: 'Change PIN',
                   onPressed: _showChangePinDialog,
+                ),
+                _buildIconButtonWithText(
+                  icon: Icons.security,
+                  color: Colors.green,
+                  label: 'OTORISASI PIN',
+                  onPressed: () {
+                    showDialog<bool>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const AutorisasiPin(
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

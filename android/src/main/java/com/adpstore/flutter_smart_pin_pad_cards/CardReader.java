@@ -43,6 +43,7 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.SystemClock;
+
 import androidx.annotation.Nullable;
 
 
@@ -221,21 +222,16 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean closeMag() {
-
         try {
-
-            return magCard.close();
-
+            if (magCard != null) {
+                return magCard.close();
+            }
+            return true;
         } catch (RemoteException e) {
-
             e.printStackTrace();
-
             AppLog.e(TAG, "closeMag: false ==============");
-
             return false;
-
         }
-
     }
 
 
@@ -271,21 +267,16 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean closeIc() {
-
         try {
-
-            return icCard.close();
-
+            if (icCard != null) {
+                return icCard.close();
+            }
+            return true; // Return true jika sudah null (sudah closed)
         } catch (RemoteException e) {
-
             e.printStackTrace();
-
             AppLog.e(TAG, "closeIc: false ==============");
-
             return false;
-
         }
-
     }
 
 
@@ -321,22 +312,18 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean closeRf() {
-
         try {
-
-            return rfCard.close();
-
+            if (rfCard != null) {
+                return rfCard.close();
+            }
+            return true;
         } catch (RemoteException e) {
-
             e.printStackTrace();
-
             AppLog.e(TAG, "closeRf: false ==============");
-
             return false;
-
         }
-
     }
+
 
 
     @Override
