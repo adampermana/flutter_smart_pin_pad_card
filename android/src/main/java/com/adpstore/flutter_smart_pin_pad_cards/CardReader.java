@@ -173,7 +173,10 @@ public class CardReader extends Service implements ICardReader {
 
 
     private CardReader(Context context) {
-        this.context = context;
+        this.context = context.getApplicationContext();
+
+        // Don't initialize services in constructor, do it lazily
+        AppLog.d(TAG, "CardReader created with context: " + (this.context != null));
     }
 
 
@@ -338,28 +341,75 @@ public class CardReader extends Service implements ICardReader {
     @Override
 
     public void startFindCard(boolean isMag, boolean isIcc, boolean isRf, int outtime,
-
                               onReadCardListener onReadCardListener) {
 
         AppLog.e(TAG, "startFindCard: isMag= " + isMag + " isIcc=" + isIcc + " isRf=" + isRf + " outtime=" + outtime);
 
+        // Re-bind DeviceServiceManagers dengan context yang benar jika perlu
+        if (context != null) {
+            try {
+                DeviceServiceManagers.getInstance().bindDeviceService(context);
+                AppLog.d(TAG, "Re-bound DeviceServiceManagers with context");
+            } catch (Exception e) {
+                AppLog.e(TAG, "Failed to re-bind DeviceServiceManagers: " + e.getMessage());
+            }
+        }
+
         // Re-initialize services
-        if (magCard == null) {
-            magCard = DeviceServiceManagers.getInstance().getMagCardReader();
-        }
-        if (icCard == null) {
-            icCard = DeviceServiceManagers.getInstance().getICCardReader();
-        }
-        if (rfCard == null) {
-            rfCard = DeviceServiceManagers.getInstance().getRfCardReader();
+        try {
+            if (magCard == null) {
+                magCard = DeviceServiceManagers.getInstance().getMagCardReader();
+                AppLog.d(TAG, "Initialized magCard: " + (magCard != null));
+            }
+            if (icCard == null) {
+                icCard = DeviceServiceManagers.getInstance().getICCardReader();
+                AppLog.d(TAG, "Initialized icCard: " + (icCard != null));
+            }
+            if (rfCard == null) {
+                rfCard = DeviceServiceManagers.getInstance().getRfCardReader();
+                AppLog.d(TAG, "Initialized rfCard: " + (rfCard != null));
+            }
+            if (aidlShellMonitor == null) {
+                aidlShellMonitor = DeviceServiceManagers.getInstance().getShellMonitor();
+                AppLog.d(TAG, "Initialized aidlShellMonitor: " + (aidlShellMonitor != null));
+            }
+        } catch (Exception e) {
+            AppLog.e(TAG, "Error initializing services: " + e.getMessage());
+            if (onReadCardListener != null) {
+                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OTHER_ERR));
+            }
+            return;
         }
 
+        // Check if required services are available after initialization
+        if (isMag && magCard == null) {
+            AppLog.e(TAG, "MagCard service not available after re-initialization");
+            if (onReadCardListener != null) {
+                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_MAG_ERR));
+            }
+            return;
+        }
+
+        if (isIcc && icCard == null) {
+            AppLog.e(TAG, "ICCard service not available after re-initialization");
+            if (onReadCardListener != null) {
+                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_IC_ERR));
+            }
+            return;
+        }
+
+        if (isRf && rfCard == null) {
+            AppLog.e(TAG, "RFCard service not available after re-initialization");
+            if (onReadCardListener != null) {
+                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_RF_ERR));
+            }
+            return;
+        }
+
+        // Continue with existing implementation...
         this.isMag = isMag;
-
         this.isIcc = isIcc;
-
         this.isRf = isRf;
-
         this.onReadCardListener = onReadCardListener;
 
 

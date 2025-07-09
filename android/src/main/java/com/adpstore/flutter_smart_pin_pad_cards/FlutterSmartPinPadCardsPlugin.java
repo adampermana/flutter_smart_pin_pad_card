@@ -88,45 +88,32 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
     }
 
 
+    // Di FlutterSmartPinPadCardsPlugin.java
     private void initializeServices() {
+        // Add delay to ensure services are properly bound
+        mainHandler.postDelayed(() -> {
+            try {
+                // Initialize EMV service
+                aidlEmvL2 = DeviceServiceManagers.getInstance().getEmvL2();
+                if (aidlEmvL2 == null) {
+                    Log.e(TAG, "EMV service initialization failed");
+                } else {
+                    Log.d(TAG, "EMV service initialized successfully");
+                }
 
-        try {
-
-            // Initialize EMV service
-
-            aidlEmvL2 = DeviceServiceManagers.getInstance().getEmvL2();
-
-            if (aidlEmvL2 == null) {
-
-                Log.e(TAG, "EMV service initialization failed");
-
-            } else {
-
-                Log.d(TAG, "EMV service initialized successfully");
-
+                // Initialize Card Reader
+                cardReader = DeviceServiceManagers.getInstance().getCardReader();
+                if (cardReader == null) {
+                    // Try creating instance directly if DeviceServiceManagers fails
+                    cardReader = CardReader.getInstance(context);
+                    Log.d(TAG, "Card Reader created directly");
+                } else {
+                    Log.d(TAG, "Card Reader initialized successfully from DeviceServiceManagers");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error initializing services: " + e.getMessage());
             }
-
-
-            // Initialize Card Reader
-
-            cardReader = DeviceServiceManagers.getInstance().getCardReader();
-
-            if (cardReader == null) {
-
-                Log.e(TAG, "Card Reader initialization failed");
-
-            } else {
-
-                Log.d(TAG, "Card Reader initialized successfully");
-
-            }
-
-        } catch (Exception e) {
-
-            Log.e(TAG, "Error initializing services: " + e.getMessage());
-
-        }
-
+        }, 1000); // 1 second delay
     }
 
 
@@ -206,9 +193,14 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         if (cardReader == null) {
 
             result.error("INIT_ERROR", "Card reader not initialized", null);
+            cardReader = CardReader.getInstance(context);
 
             return;
+        }
 
+        if (cardReader == null) {
+            result.error("INIT_ERROR", "Card reader not initialized", null);
+            return;
         }
 
 
