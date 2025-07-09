@@ -61,7 +61,7 @@ public class DeviceServiceManagers {
 
     private static final IConvert convert = TopTool.getInstance().getConvert();
 
-    private Context mContext;
+    private static Context mContext;
     private AidlDeviceService mDeviceService;
 
 
@@ -135,7 +135,9 @@ public class DeviceServiceManagers {
     private static IBinder getService(String serviceName) {
         IBinder binder = null;
         try {
-            ClassLoader cl = SmartPosApplication.getContext().getClassLoader();
+//            ClassLoader cl = SmartPosApplication.getContext().getClassLoader();
+            ClassLoader cl = mContext.getClassLoader();
+
             Class<?> serviceManager = cl.loadClass("android.os.ServiceManager");
             Class[] paramTypes = new Class[1];
             paramTypes[0] = String.class;

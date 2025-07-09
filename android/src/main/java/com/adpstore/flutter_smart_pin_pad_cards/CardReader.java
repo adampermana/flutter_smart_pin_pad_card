@@ -173,7 +173,7 @@ public class CardReader extends Service implements ICardReader {
 
 
     private CardReader(Context context) {
-        this.context = context.getApplicationContext();
+        this.context = context;
 
         // Don't initialize services in constructor, do it lazily
         AppLog.d(TAG, "CardReader created with context: " + (this.context != null));
