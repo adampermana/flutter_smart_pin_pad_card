@@ -174,8 +174,30 @@ public class CardReader extends Service implements ICardReader {
 
     private CardReader(Context context) {
         this.context = context;
+        // Initialize services with retry mechanism
+        initializeServices();
     }
 
+    private void initializeServices() {
+        try {
+            // Initialize DeviceServiceManagers if needed
+            DeviceServiceManagers deviceManager = DeviceServiceManagers.getInstance();
+
+            // Get services
+            magCard = deviceManager.getMagCardReader();
+            icCard = deviceManager.getICCardReader();
+            rfCard = deviceManager.getRfCardReader();
+            aidlShellMonitor = deviceManager.getShellMonitor();
+
+            AppLog.d(TAG, "Services initialized - Mag: " + (magCard != null) +
+                    ", IC: " + (icCard != null) +
+                    ", RF: " + (rfCard != null) +
+                    ", Shell: " + (aidlShellMonitor != null));
+
+        } catch (Exception e) {
+            AppLog.e(TAG, "Error initializing services: " + e.getMessage());
+        }
+    }
 
     public synchronized static CardReader getInstance(Context context) {
 
@@ -197,21 +219,23 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean openMag() {
-
         try {
+            // Re-initialize if null
+            if (magCard == null) {
+                magCard = DeviceServiceManagers.getInstance().getMagCardReader();
+            }
+
+            if (magCard == null) {
+                AppLog.e(TAG, "openMag: magCard service is null");
+                return false;
+            }
 
             return magCard.open();
-
         } catch (RemoteException e) {
-
             e.printStackTrace();
-
             AppLog.e(TAG, "openMag: false ==============");
-
             return false;
-
         }
-
     }
 
 
@@ -242,22 +266,25 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean openIc() {
-
         try {
+            // Re-initialize if null
+            if (icCard == null) {
+                icCard = DeviceServiceManagers.getInstance().getICCardReader();
+            }
+
+            if (icCard == null) {
+                AppLog.e(TAG, "openIc: icCard service is null");
+                return false;
+            }
 
             return icCard.open();
-
         } catch (RemoteException e) {
-
             e.printStackTrace();
-
             AppLog.e(TAG, "openIc: false ==============");
-
             return false;
-
         }
-
     }
+
 
 
     /**
@@ -287,22 +314,25 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean openRf() {
-
         try {
+            // Re-initialize if null
+            if (rfCard == null) {
+                rfCard = DeviceServiceManagers.getInstance().getRfCardReader();
+            }
+
+            if (rfCard == null) {
+                AppLog.e(TAG, "openRf: rfCard service is null");
+                return false;
+            }
 
             return rfCard.open();
-
         } catch (RemoteException e) {
-
             e.printStackTrace();
-
             AppLog.e(TAG, "openRf: false ==============");
-
             return false;
-
         }
-
     }
+
 
 
     /**
@@ -329,17 +359,45 @@ public class CardReader extends Service implements ICardReader {
     @Override
 
     public void startFindCard(boolean isMag, boolean isIcc, boolean isRf, int outtime,
-
                               onReadCardListener onReadCardListener) {
 
         AppLog.e(TAG, "startFindCard: isMag= " + isMag + " isIcc=" + isIcc + " isRf=" + isRf + " outtime=" + outtime);
 
+        // Re-initialize services if any is null
+        if ((isMag && magCard == null) || (isIcc && icCard == null) || (isRf && rfCard == null)) {
+            AppLog.d(TAG, "Re-initializing services...");
+            initializeServices();
+        }
+
+        // Check if required services are available
+        if (isMag && magCard == null) {
+            AppLog.e(TAG, "MagCard service not available");
+            if (onReadCardListener != null) {
+                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_MAG_ERR));
+            }
+            return;
+        }
+
+        if (isIcc && icCard == null) {
+            AppLog.e(TAG, "ICCard service not available");
+            if (onReadCardListener != null) {
+                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_IC_ERR));
+            }
+            return;
+        }
+
+        if (isRf && rfCard == null) {
+            AppLog.e(TAG, "RFCard service not available");
+            if (onReadCardListener != null) {
+                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_RF_ERR));
+            }
+            return;
+        }
+
+        // Rest of existing code...
         this.isMag = isMag;
-
         this.isIcc = isIcc;
-
         this.isRf = isRf;
-
         this.onReadCardListener = onReadCardListener;
 
 
@@ -415,8 +473,6 @@ public class CardReader extends Service implements ICardReader {
         @Override
 
         public void run() {
-
-            CloseAll();
 
             SystemClock.sleep(20);
 
