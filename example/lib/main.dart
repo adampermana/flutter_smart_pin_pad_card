@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'card_reader_dialog.dart';
+import 'dummy.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
