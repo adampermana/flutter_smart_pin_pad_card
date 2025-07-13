@@ -49,6 +49,7 @@ import java.lang.reflect.Method;
 
 /**
  * @author caixh
+ * Improved version with better error handling and null safety
  */
 public class DeviceServiceManagers {
     private static final String TAG = "DeviceServiceManagers";
@@ -58,85 +59,127 @@ public class DeviceServiceManagers {
     private static final String ACTION_DEVICE_SERVICE = "topwise_cloudpos_device_service";
 
     private static DeviceServiceManagers instance;
-
     private static final IConvert convert = TopTool.getInstance().getConvert();
-
     private static Context mContext;
     private AidlDeviceService mDeviceService;
-
+    private boolean isServiceConnected = false;
+    private boolean isBinding = false;
 
     public static DeviceServiceManagers getInstance() {
         Log.d(TAG, "getInstance()");
         if (null == instance) {
             synchronized (DeviceServiceManagers.class) {
-                instance = new DeviceServiceManagers();
+                if (null == instance) {
+                    instance = new DeviceServiceManagers();
+                }
             }
         }
         return instance;
     }
 
-
     public boolean bindDeviceService(Context context) {
         Log.i(TAG, "bindDeviceService");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+        if (isServiceConnected) {
+            Log.i(TAG, "Service already connected");
             return true;
         }
+
+        if (isBinding) {
+            Log.i(TAG, "Service is currently binding");
+            return true;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Log.i(TAG, "Android O+ detected, using direct service access");
+            getDeviceService();
+            return true;
+        }
+
         this.mContext = context;
         Intent intent = new Intent();
         intent.setAction(ACTION_DEVICE_SERVICE);
         intent.setClassName(DEVICE_SERVICE_PACKAGE_NAME, DEVICE_SERVICE_CLASS_NAME);
 
         try {
+            isBinding = true;
             boolean bindResult = mContext.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
             Log.i(TAG, "bindResult = " + bindResult);
+
+            if (!bindResult) {
+                isBinding = false;
+                Log.e(TAG, "Failed to bind service, trying direct access");
+                getDeviceService();
+                return mDeviceService != null;
+            }
+
             return bindResult;
         } catch (Exception e) {
-            e.printStackTrace();
+            isBinding = false;
+            Log.e(TAG, "Exception during service binding: " + e.getMessage(), e);
+            // Try direct access as fallback
+            getDeviceService();
+            return mDeviceService != null;
         }
-
-        return false;
     }
 
     public void unBindDeviceService() {
         Log.i(TAG, "unBindDeviceService");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            mDeviceService = null;
+            isServiceConnected = false;
             return;
         }
         try {
-            mContext.unbindService(mConnection);
+            if (mContext != null && isServiceConnected) {
+                mContext.unbindService(mConnection);
+                isServiceConnected = false;
+            }
         } catch (Exception e) {
-            Log.i(TAG, "unbind DeviceService service failed : " + e);
+            Log.i(TAG, "unbind DeviceService service failed : " + e.getMessage());
         }
     }
 
-
     private final ServiceConnection mConnection = new ServiceConnection() {
-
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             mDeviceService = AidlDeviceService.Stub.asInterface(service);
-            Log.d(TAG, "gz mDeviceService" + mDeviceService);
-            Log.i(TAG, "onServiceConnected  :  " + mDeviceService);
+            isServiceConnected = true;
+            isBinding = false;
+            Log.i(TAG, "onServiceConnected: " + mDeviceService);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            Log.i(TAG, "onServiceDisconnected  :  " + mDeviceService);
+            Log.i(TAG, "onServiceDisconnected: " + mDeviceService);
             mDeviceService = null;
+            isServiceConnected = false;
+            isBinding = false;
         }
     };
 
     public void getDeviceService() {
         if (mDeviceService == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            mDeviceService = AidlDeviceService.Stub.asInterface(getService(ACTION_DEVICE_SERVICE));
+            try {
+                IBinder binder = getService(ACTION_DEVICE_SERVICE);
+                if (binder != null) {
+                    mDeviceService = AidlDeviceService.Stub.asInterface(binder);
+                    isServiceConnected = true;
+                    Log.i(TAG, "Direct service access successful");
+                } else {
+                    Log.e(TAG, "Failed to get service binder");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting device service: " + e.getMessage(), e);
+            }
         }
     }
 
     private static IBinder getService(String serviceName) {
         IBinder binder = null;
         try {
-//            ClassLoader cl = SmartPosApplication.getContext().getClassLoader();
-            ClassLoader cl = mContext.getClassLoader();
+            ClassLoader cl = mContext != null ? mContext.getClassLoader() :
+                    DeviceServiceManagers.class.getClassLoader();
 
             Class<?> serviceManager = cl.loadClass("android.os.ServiceManager");
             Class[] paramTypes = new Class[1];
@@ -146,415 +189,201 @@ public class DeviceServiceManagers {
             params[0] = serviceName;
             binder = (IBinder) get.invoke(serviceManager, params);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error getting service: " + e.getMessage(), e);
         }
         return binder;
     }
 
-
-    public AidlSystem getSystemManager() {
+    // Safe getter methods with null checks
+    private <T> T safeGetService(ServiceGetter<T> getter) {
         try {
             getDeviceService();
             if (mDeviceService != null) {
-                return AidlSystem.Stub.asInterface(mDeviceService.getSystemService());
+                return getter.get(mDeviceService);
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            Log.e(TAG, "RemoteException in service call: " + e.getMessage(), e);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in service call: " + e.getMessage(), e);
         }
         return null;
+    }
+
+    @FunctionalInterface
+    private interface ServiceGetter<T> {
+        T get(AidlDeviceService service) throws RemoteException;
+    }
+
+    public AidlSystem getSystemManager() {
+        return safeGetService(service -> AidlSystem.Stub.asInterface(service.getSystemService()));
     }
 
     public AidlBuzzer getBuzzer() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlBuzzer.Stub.asInterface(mDeviceService.getBuzzer());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlBuzzer.Stub.asInterface(service.getBuzzer()));
     }
 
     public AidlDecoderManager getDecoder() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlDecoderManager.Stub.asInterface(mDeviceService.getDecoder());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlDecoderManager.Stub.asInterface(service.getDecoder()));
     }
 
     public AidlLed getLed() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlLed.Stub.asInterface(mDeviceService.getLed());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlLed.Stub.asInterface(service.getLed()));
     }
 
     public AidlPinpad getPinpadManager(int devid) {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPinpad.Stub.asInterface(mDeviceService.getPinPad(devid));
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlPinpad.Stub.asInterface(service.getPinPad(devid)));
     }
 
     public AidlPrinter getPrintManager() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPrinter.Stub.asInterface(mDeviceService.getPrinter());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlPrinter.Stub.asInterface(service.getPrinter()));
     }
 
     public AidlTM getAidlTM() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlTM.Stub.asInterface(mDeviceService.getTM());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlTM.Stub.asInterface(service.getTM()));
     }
 
-
     public AidlICCard getICCardReader() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlICCard.Stub.asInterface(mDeviceService.getInsertCardReader());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        AidlICCard icCard = safeGetService(service -> AidlICCard.Stub.asInterface(service.getInsertCardReader()));
+        if (icCard == null) {
+            Log.w(TAG, "ICCard service is null");
+        } else {
+            Log.d(TAG, "ICCard service obtained successfully");
         }
-        return null;
+        return icCard;
     }
 
     public AidlRFCard getRfCardReader() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlRFCard.Stub.asInterface(mDeviceService.getRFIDReader());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        AidlRFCard rfCard = safeGetService(service -> AidlRFCard.Stub.asInterface(service.getRFIDReader()));
+        if (rfCard == null) {
+            Log.w(TAG, "RFCard service is null");
+        } else {
+            Log.d(TAG, "RFCard service obtained successfully");
         }
-        return null;
-    }
-
-    public AidlPsam getPsamCardReader(int devid) {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPsam.Stub.asInterface(mDeviceService.getPSAMReader(devid));
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return rfCard;
     }
 
     public AidlMagCard getMagCardReader() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlMagCard.Stub.asInterface(mDeviceService.getMagCardReader());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        AidlMagCard magCard = safeGetService(service -> AidlMagCard.Stub.asInterface(service.getMagCardReader()));
+        if (magCard == null) {
+            Log.w(TAG, "MagCard service is null");
+        } else {
+            Log.d(TAG, "MagCard service obtained successfully");
         }
-        return null;
-    }
-
-    public AidlCPUCard getCPUCardReader() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlCPUCard.Stub.asInterface(mDeviceService.getCPUCard());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public AidlSerialport getSerialPort(int port) {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlSerialport.Stub.asInterface(mDeviceService.getSerialPort(port));
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return magCard;
     }
 
     public AidlShellMonitor getShellMonitor() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlShellMonitor.Stub.asInterface(mDeviceService.getShellMonitor());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        AidlShellMonitor shellMonitor = safeGetService(service -> AidlShellMonitor.Stub.asInterface(service.getShellMonitor()));
+        if (shellMonitor == null) {
+            Log.w(TAG, "ShellMonitor service is null");
+        } else {
+            Log.d(TAG, "ShellMonitor service obtained successfully");
         }
-        return null;
-    }
-
-    public AidlPedestal getPedestal() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPedestal.Stub.asInterface(mDeviceService.getPedestal());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return shellMonitor;
     }
 
     public AidlEmvL2 getEmvL2() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlEmvL2.Stub.asInterface(mDeviceService.getL2Emv());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlEmvL2.Stub.asInterface(service.getL2Emv()));
+    }
+
+    public AidlPsam getPsamCardReader(int devid) {
+        return safeGetService(service -> AidlPsam.Stub.asInterface(service.getPSAMReader(devid)));
+    }
+
+    public AidlCPUCard getCPUCardReader() {
+        return safeGetService(service -> AidlCPUCard.Stub.asInterface(service.getCPUCard()));
+    }
+
+    public AidlSerialport getSerialPort(int port) {
+        return safeGetService(service -> AidlSerialport.Stub.asInterface(service.getSerialPort(port)));
+    }
+
+    public AidlPedestal getPedestal() {
+        return safeGetService(service -> AidlPedestal.Stub.asInterface(service.getPedestal()));
     }
 
     public AidlPure getL2Pure() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPure.Stub.asInterface(mDeviceService.getL2Pure());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlPure.Stub.asInterface(service.getL2Pure()));
     }
 
     public AidlPaypass getL2Paypass() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPaypass.Stub.asInterface(mDeviceService.getL2Paypass());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlPaypass.Stub.asInterface(service.getL2Paypass()));
     }
 
     public AidlPaywave getL2Paywave() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPaywave.Stub.asInterface(mDeviceService.getL2Paywave());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlPaywave.Stub.asInterface(service.getL2Paywave()));
     }
 
     public AidlEntry getL2Entry() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlEntry.Stub.asInterface(mDeviceService.getL2Entry());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlEntry.Stub.asInterface(service.getL2Entry()));
     }
 
     public AidlAmex getL2Amex() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlAmex.Stub.asInterface(mDeviceService.getL2Amex());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlAmex.Stub.asInterface(service.getL2Amex()));
     }
 
     public AidlQpboc getL2Qpboc() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlQpboc.Stub.asInterface(mDeviceService.getL2Qpboc());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlQpboc.Stub.asInterface(service.getL2Qpboc()));
     }
-
 
     public AidlRupay getRupay() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlRupay.Stub.asInterface(mDeviceService.getL2Rupay());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlRupay.Stub.asInterface(service.getL2Rupay()));
     }
-
 
     public AidlMir getMirPay() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlMir.Stub.asInterface(mDeviceService.getL2Mir());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlMir.Stub.asInterface(service.getL2Mir()));
     }
-
 
     public AidlDpas getDpasPay() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlDpas.Stub.asInterface(mDeviceService.getL2Dpas());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlDpas.Stub.asInterface(service.getL2Dpas()));
     }
-
 
     public AidlJcb getJcbPay() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlJcb.Stub.asInterface(mDeviceService.getL2JCB());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlJcb.Stub.asInterface(service.getL2JCB()));
     }
 
-
     public AidlPsam getPsam(int devid) {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPsam.Stub.asInterface(mDeviceService.getPSAMReader(devid));
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlPsam.Stub.asInterface(service.getPSAMReader(devid)));
     }
 
     public AidlCameraScanCode getCameraManager() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlCameraScanCode.Stub.asInterface(mDeviceService.getCameraManager());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlCameraScanCode.Stub.asInterface(service.getCameraManager()));
     }
 
     public Bundle expandFunction(Bundle param) {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return mDeviceService.expandFunction(param);
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> service.expandFunction(param));
     }
 
-    // zhongfeiyu add pm by 2022/1/11 @{
     public AidlPM getPm() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlPM.Stub.asInterface(mDeviceService.getPM());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlPM.Stub.asInterface(service.getPM()));
     }
-    // @}
 
-    //finger detect
     public AidlFingerprint getFingerprint() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlFingerprint.Stub.asInterface(mDeviceService.getFingerprint());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlFingerprint.Stub.asInterface(service.getFingerprint()));
     }
-
 
     public ICardReader getCardReader() {
-        CardReader cardReader = CardReader.getInstance(mContext);
-        return cardReader;
+        try {
+            CardReader cardReader = CardReader.getInstance(mContext);
+            Log.d(TAG, "CardReader instance created: " + (cardReader != null));
+            return cardReader;
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating CardReader instance: " + e.getMessage(), e);
+            return null;
+        }
     }
-
 
     public IEmv getEmvHelper() {
-        return (IEmv) TransProcess.getInstance();
+        try {
+            return (IEmv) TransProcess.getInstance();
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting EMV helper: " + e.getMessage(), e);
+            return null;
+        }
     }
 
-
     public AidlCheckCard getCheckCard() {
-        try {
-            getDeviceService();
-            if (mDeviceService != null) {
-                return AidlCheckCard.Stub.asInterface(mDeviceService.getCheckCard());
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return safeGetService(service -> AidlCheckCard.Stub.asInterface(service.getCheckCard()));
     }
 
     public boolean injectMainKey(int mainKeyIndex, byte[] key) {
@@ -562,7 +391,7 @@ public class DeviceServiceManagers {
             AidlPinpad pinpadManager = getPinpadManager(0);
             return pinpadManager != null && pinpadManager.loadMainkey(mainKeyIndex, key, null);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error injecting main key: " + e.getMessage(), e);
             return false;
         }
     }
@@ -571,88 +400,22 @@ public class DeviceServiceManagers {
         void OnConnection(boolean ret);
     }
 
-    /**
-     * Inject PIN BDK
-     *
-     * @param pinValue
-     * @param ksn
-     * @return
-     */
-    public static boolean writeBdkPin(int index, byte[] pinValue, byte[] ksn) {
-        final AidlPinpad pinpadManager = SmartPosApplication.usdkManage.getPinpadManager(0);
-        try {
-            return pinpadManager.loadDukptBDK(index, pinValue, ksn);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return false;
+    // Check if service is ready
+    public boolean isServiceReady() {
+        return mDeviceService != null && isServiceConnected;
     }
 
-    /**
-     * Inject DATA BDK
-     *
-     * @param dataValue
-     * @param ksn
-     * @return
-     */
-    public static boolean writeBdkData(int index, byte[] dataValue, byte[] ksn) {
-        final AidlPinpad pinpadManager = SmartPosApplication.usdkManage.getPinpadManager(0);
-        try {
-            return pinpadManager.loadDukptBDK(index, dataValue, ksn);
-        } catch (RemoteException e) {
-            e.printStackTrace();
+    // Wait for service to be ready
+    public boolean waitForService(long timeoutMs) {
+        long startTime = System.currentTimeMillis();
+        while (!isServiceReady() && (System.currentTimeMillis() - startTime) < timeoutMs) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
         }
-        return false;
+        return isServiceReady();
     }
-
-    /**
-     * Automatically increase ksn before each use
-     *
-     * @return
-     */
-    public static String autoAddPinKsn() {
-        final AidlPinpad pinpadManager = SmartPosApplication.usdkManage.getPinpadManager(0);
-        try {
-            byte[] dukptKsn = pinpadManager.getDUKPTKsn(ConfiUtils.pinIndex, true);
-            if (dukptKsn == null || dukptKsn.length == 0) return null;
-            return convert.bcdToStr(dukptKsn);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static String autoAddDataKsn() {
-        final AidlPinpad pinpadManager = SmartPosApplication.usdkManage.getPinpadManager(0);
-        try {
-            byte[] dukptKsn = pinpadManager.getDUKPTKsn(ConfiUtils.tdkIndex, true);
-            if (dukptKsn == null || dukptKsn.length == 0) return null;
-            return convert.bcdToStr(dukptKsn);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static boolean injectMain(int mMainKey, byte[] key) {
-        final AidlPinpad pinpadManager = SmartPosApplication.usdkManage.getPinpadManager(0);
-        try {
-            return pinpadManager.loadMainkey(mMainKey, key, null);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public static boolean injectPIK(int KEYTYPE_PEK, int mMainKey, int mWorkKey, byte[] key) {
-        final AidlPinpad pinpadManager = SmartPosApplication.usdkManage.getPinpadManager(0);
-        try {
-            return pinpadManager.loadWorkKey(KEYTYPE_PEK, mMainKey, mWorkKey, key, null);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-
 }
