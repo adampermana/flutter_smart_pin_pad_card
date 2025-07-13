@@ -1,40 +1,40 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adpstore.flutter_smart_pin_pad_cards">
 
-    <!-- All required permissions -->
-    <uses-permission android:name="android.permission.CLOUDPOS_PRINTER" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_BLOCK" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_MAC" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_ENCRYPT_DATA" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_MKEY" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_WKEY" />
-    <uses-permission android:name="android.permission.CLOUDPOS_ICCARD" />
-    <uses-permission android:name="android.permission.CLOUDPOS_EMVL2" />
-    <uses-permission android:name="android.permission.CLOUDPOS_RFCARD" />
-    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD" />
-    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETTRACKDATA" />
-    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETENCRYPTTRACKDATA" />
-    <uses-permission android:name="android.permission.CLOUDPOS_PSAMCARD" />
-    <uses-permission android:name="android.permission.CLOUDPOS_SERIALPORT" />
-    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV" />
-    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_ALARM" />
-    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_INSTALL" />
-    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_OS_UPDATE" />
-    <uses-permission android:name="android.permission.CLOUDPOS_SHELLMONITORDEV" />
-    <uses-permission android:name="android.permission.CLOUDPOS_CASHER" />
+<!--    &lt;!&ndash; All required permissions &ndash;&gt;-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PRINTER" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_BLOCK" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_PIN_MAC" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_ENCRYPT_DATA" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_MKEY" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PINPAD_UPDATE_WKEY" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_ICCARD" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_EMVL2" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_RFCARD" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETTRACKDATA" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD_GETENCRYPTTRACKDATA" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_PSAMCARD" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_SERIALPORT" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_ALARM" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_INSTALL" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEMDEV_OS_UPDATE" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_SHELLMONITORDEV" />-->
+<!--    <uses-permission android:name="android.permission.CLOUDPOS_CASHER" />-->
 
-    <application
-        android:name="com.adpstore.flutter_smart_pin_pad_cards.SmartPosApplication"
-        android:allowBackup="false"
-        android:label="Flutter Smart Pin Pad Cards">
+<!--    <application-->
+<!--        android:name="com.adpstore.flutter_smart_pin_pad_cards.SmartPosApplication"-->
+<!--        android:allowBackup="false"-->
+<!--        android:label="Flutter Smart Pin Pad Cards">-->
 
-        <!-- Fixed Service Declaration -->
-        <service
-            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardReader"
-            android:enabled="true"
-            android:exported="false">
-        </service>
+<!--        &lt;!&ndash; Fixed Service Declaration &ndash;&gt;-->
+<!--        <service-->
+<!--            android:name="com.adpstore.flutter_smart_pin_pad_cards.CardReader"-->
+<!--            android:enabled="true"-->
+<!--            android:exported="false">-->
+<!--        </service>-->
 
-    </application>
+<!--    </application>-->
 </manifest>
