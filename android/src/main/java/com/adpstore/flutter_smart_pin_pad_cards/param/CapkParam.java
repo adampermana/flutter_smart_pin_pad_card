@@ -27,7 +27,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
  */
 public class CapkParam extends LoadParam<EmvCapkParam>{
     private static final String CAPKNAME = "capk.xml";
-    private static final String CAPKNAME_TEST = "capk_test.xml";
+//    private static final String CAPKNAME_TEST = "capk_test.xml";
     public  static HashMap<String, EmvCapkParam> capkMap = new HashMap();
 
     @Override

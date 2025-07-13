@@ -225,7 +225,7 @@ public class ContactEmvProcess extends ABaseTransProcess {
             }
 
             // The terminal uses the RID and index to retrieve the terminal-stored CAPK
-            emvRest = AppRetrieveCAPK();
+//            emvRest = AppRetrieveCAPK();
             AppLog.d(TAG, "emvProcess AppRetrieveCAPK emvRest:" + emvRest);
 
             // Offline Data Authentication
@@ -583,54 +583,54 @@ public class ContactEmvProcess extends ABaseTransProcess {
      * The terminal uses the RID and index to retrieve the terminal-stored CAPK
      * @return
      */
-    private int AppRetrieveCAPK() {
-        int emvRet = 0;
-        AppLog.d(TAG, "emvProcess retrieveCAPK()================");
-        try {
-            // Delete all public key and revoked public key
-            emvL2.EMV_DelAllCAPK();
-            emvL2.EMV_DelAllRevoIPK();
-
-            // Get current AID
-            byte[] aid = emvL2.EMV_GetTLVData(0x9F06);
-            if ((aid == null) || (aid.length < 5) || (aid.length > 16)) {
-                AppLog.d(TAG, "emvProcess retrieveCAPK Get aid(9F06) failed!");
-                return EmvErrorCode.EMV_PARAMETER_ERROR;
-            }
-            AppLog.d(TAG, "emvProcess retrieveCAPK aid(9F06): " + BytesUtil.bytes2HexString(aid));
-
-            // Get public key index
-            byte[] index = emvL2.EMV_GetTLVData(0x8F);
-            if ((index == null) || (index.length != 1)) {
-                AppLog.d(TAG, "emvProcess retrieveCAPK Get CAPK index(8F) failed!");
-                return EmvErrorCode.EMV_PARAMETER_ERROR;
-            }
-            AppLog.d(TAG, "emvProcess retrieveCAPK CAPK index(8F): " + BytesUtil.bytes2HexString(index));
-
-            // Get RID from first 5 bytes of AID
-            byte[] rid = new byte[5];
-            System.arraycopy(aid, 0, rid, 0, 5);
-
-            // Search for public key specific by RID and index
-            EmvCapk emvCapk = emvProcessListener.onFindIssCapkParamProc(BytesUtil.bytes2HexString(rid), (byte) (index[0] & 0xFF));
-            if (null == emvCapk) {
-                AppLog.d(TAG, "emvProcess retrieveCAPK findByRidIndex failed!");
-                return EmvErrorCode.EMV_PARAMETER_ERROR;
-            }
-            AppLog.d(TAG, "retrieveCAPK onFindIssuerCapkParam EmvCapk: " + emvCapk.toString());
-
-            // Add public key param to kernel
-            emvRet = emvL2.EMV_AddCAPK(emvCapk);
-            AppLog.d(TAG, "emvProcess retrieveCAPK EMV_AddCAPK emvRet : " + emvRet);
-            if (emvRet != EmvErrorCode.EMV_OK) {
-                return EmvErrorCode.EMV_PARAMETER_ERROR;
-            }
-            return  EmvErrorCode.EMV_OK;
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return  EmvErrorCode.EMV_PARAMETER_ERROR;
-    }
+//    private int AppRetrieveCAPK() {
+//        int emvRet = 0;
+//        AppLog.d(TAG, "emvProcess retrieveCAPK()================");
+//        try {
+//            // Delete all public key and revoked public key
+//            emvL2.EMV_DelAllCAPK();
+//            emvL2.EMV_DelAllRevoIPK();
+//
+//            // Get current AID
+//            byte[] aid = emvL2.EMV_GetTLVData(0x9F06);
+//            if ((aid == null) || (aid.length < 5) || (aid.length > 16)) {
+//                AppLog.d(TAG, "emvProcess retrieveCAPK Get aid(9F06) failed!");
+//                return EmvErrorCode.EMV_PARAMETER_ERROR;
+//            }
+//            AppLog.d(TAG, "emvProcess retrieveCAPK aid(9F06): " + BytesUtil.bytes2HexString(aid));
+//
+//            // Get public key index
+//            byte[] index = emvL2.EMV_GetTLVData(0x8F);
+//            if ((index == null) || (index.length != 1)) {
+//                AppLog.d(TAG, "emvProcess retrieveCAPK Get CAPK index(8F) failed!");
+//                return EmvErrorCode.EMV_PARAMETER_ERROR;
+//            }
+//            AppLog.d(TAG, "emvProcess retrieveCAPK CAPK index(8F): " + BytesUtil.bytes2HexString(index));
+//
+//            // Get RID from first 5 bytes of AID
+//            byte[] rid = new byte[5];
+//            System.arraycopy(aid, 0, rid, 0, 5);
+//
+//            // Search for public key specific by RID and index
+//            EmvCapk emvCapk = emvProcessListener.onFindIssCapkParamProc(BytesUtil.bytes2HexString(rid), (byte) (index[0] & 0xFF));
+//            if (null == emvCapk) {
+//                AppLog.d(TAG, "emvProcess retrieveCAPK findByRidIndex failed!");
+//                return EmvErrorCode.EMV_PARAMETER_ERROR;
+//            }
+//            AppLog.d(TAG, "retrieveCAPK onFindIssuerCapkParam EmvCapk: " + emvCapk.toString());
+//
+//            // Add public key param to kernel
+//            emvRet = emvL2.EMV_AddCAPK(emvCapk);
+//            AppLog.d(TAG, "emvProcess retrieveCAPK EMV_AddCAPK emvRet : " + emvRet);
+//            if (emvRet != EmvErrorCode.EMV_OK) {
+//                return EmvErrorCode.EMV_PARAMETER_ERROR;
+//            }
+//            return  EmvErrorCode.EMV_OK;
+//        } catch (RemoteException e) {
+//            e.printStackTrace();
+//        }
+//        return  EmvErrorCode.EMV_PARAMETER_ERROR;
+//    }
 
     /**
      * Get current card number
