@@ -770,7 +770,166 @@ public class CardReader extends Service implements ICardReader {
         Log.d(TAG, "readMag resultCode: " + mResultCode);
         return mResultCode;
     }
+// Add these methods to CardReader.java for debugging EMV data
 
+    /**
+     * Debug method to extract all available EMV TLV data
+     */
+    private void debugEmvTlvData(IEmv emvHelper) {
+        Log.d(TAG, "=== EMV TLV Data Debug ===");
+
+        // Common EMV tags to check
+        int[] commonTags = {
+                0x5A,   // Application Primary Account Number (PAN)
+                0x5F24, // Application Expiration Date
+                0x5F20, // Cardholder Name
+                0x57,   // Track 2 Equivalent Data
+                0x9F6E, // Visa Low-Value Payment (VLP) Supported Indicator
+                0x9F07, // Application Usage Control
+                0x9F08, // Application Version Number
+                0x9F42, // Application Currency Code
+                0x5F25, // Application Effective Date
+                0x5F28, // Issuer Country Code
+                0x9F12, // Application Preferred Name
+                0x9F11, // Issuer Code Table Index
+                0x9F4A, // Static Data Authentication Tag List
+                0x82,   // Application Interchange Profile
+                0x84,   // Dedicated File (DF) Name
+                0x9F38, // Processing Options Data Object List (PDOL)
+                0x9F36, // Application Transaction Counter (ATC)
+                0x9F26, // Application Cryptogram
+                0x9F27, // Cryptogram Information Data
+                0x9F10, // Issuer Application Data
+                0x9F37, // Unpredictable Number
+                0x9F35, // Terminal Type
+                0x9F33, // Terminal Capabilities
+                0x9F40, // Additional Terminal Capabilities
+                0x9F39, // Point-of-Service (POS) Entry Mode
+                0x9F41, // Transaction Sequence Counter
+                0x9A,   // Transaction Date
+                0x9C,   // Transaction Type
+                0x9F02, // Amount, Authorized (Numeric)
+                0x9F03, // Amount, Other (Numeric)
+                0x9F1A, // Terminal Country Code
+                0x5F2A, // Transaction Currency Code
+                0x9F21, // Transaction Time
+                0x9F34, // Cardholder Verification Method (CVM) Results
+                0x9F0D, // Issuer Action Code - Default
+                0x9F0E, // Issuer Action Code - Denial
+                0x9F0F  // Issuer Action Code - Online
+        };
+
+        for (int tag : commonTags) {
+            try {
+                byte[] data = emvHelper.getTlv(tag);
+                if (data != null && data.length > 0) {
+                    String hexData = BytesUtil.bytes2HexString(data);
+                    String tagHex = String.format("%X", tag);
+                    Log.d(TAG, String.format("Tag %s (%s): %s", tagHex, getTagDescription(tag), hexData));
+
+                    // Special handling for specific tags
+                    if (tag == 0x5A) { // PAN
+                        String pan = hexData.replace("F", "");
+                        Log.d(TAG, "PAN (processed): " + pan);
+                    } else if (tag == 0x5F24) { // Expiry Date
+                        Log.d(TAG, "Expiry Date (YYMMDD): " + hexData);
+                    } else if (tag == 0x57) { // Track2
+                        Log.d(TAG, "Track2 Data: " + hexData);
+                    } else if (tag == 0x5F20) { // Cardholder Name
+                        try {
+                            String name = new String(data, "UTF-8").trim();
+                            Log.d(TAG, "Cardholder Name: " + name);
+                        } catch (Exception e) {
+                            Log.d(TAG, "Cardholder Name (hex): " + hexData);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error reading tag " + String.format("%X", tag) + ": " + e.getMessage());
+            }
+        }
+
+        Log.d(TAG, "=== End EMV TLV Data Debug ===");
+    }
+
+    /**
+     * Get description for EMV tags
+     */
+    private String getTagDescription(int tag) {
+        switch (tag) {
+            case 0x5A: return "Application Primary Account Number (PAN)";
+            case 0x5F24: return "Application Expiration Date";
+            case 0x5F20: return "Cardholder Name";
+            case 0x57: return "Track 2 Equivalent Data";
+            case 0x82: return "Application Interchange Profile";
+            case 0x84: return "Dedicated File (DF) Name";
+            case 0x9F07: return "Application Usage Control";
+            case 0x9F08: return "Application Version Number";
+            case 0x9F42: return "Application Currency Code";
+            case 0x5F25: return "Application Effective Date";
+            case 0x5F28: return "Issuer Country Code";
+            case 0x9F12: return "Application Preferred Name";
+            case 0x9F11: return "Issuer Code Table Index";
+            case 0x9A: return "Transaction Date";
+            case 0x9C: return "Transaction Type";
+            case 0x9F02: return "Amount, Authorized";
+            case 0x9F03: return "Amount, Other";
+            case 0x9F1A: return "Terminal Country Code";
+            case 0x5F2A: return "Transaction Currency Code";
+            case 0x9F21: return "Transaction Time";
+            default: return "Unknown";
+        }
+    }
+
+    /**
+     * Try multiple methods to extract PAN from EMV data
+     */
+    private String extractPanFromEmv(IEmv emvHelper) {
+        String pan = null;
+
+        // Method 1: Direct PAN tag (5A)
+        byte[] panData = emvHelper.getTlv(0x5A);
+        if (panData != null && panData.length > 0) {
+            pan = BytesUtil.bytes2HexString(panData).replace("F", "");
+            Log.d(TAG, "PAN found via tag 5A: " + pan);
+            return pan;
+        }
+
+        // Method 2: Extract from Track2 (57)
+        byte[] track2Data = emvHelper.getTlv(0x57);
+        if (track2Data != null && track2Data.length > 0) {
+            String track2Hex = BytesUtil.bytes2HexString(track2Data);
+            Log.d(TAG, "Track2 hex: " + track2Hex);
+
+            // Track2 format in hex: PAN + D + YYMM + service code + ...
+            int separatorIndex = track2Hex.indexOf("D");
+            if (separatorIndex > 0) {
+                pan = track2Hex.substring(0, separatorIndex);
+                Log.d(TAG, "PAN extracted from Track2: " + pan);
+                return pan;
+            }
+        }
+
+        // Method 3: Try other possible tags
+        int[] alternativeTags = {0x9F1F, 0x9F20, 0x9F6E};
+        for (int tag : alternativeTags) {
+            byte[] data = emvHelper.getTlv(tag);
+            if (data != null && data.length > 0) {
+                String hexData = BytesUtil.bytes2HexString(data);
+                Log.d(TAG, "Alternative tag " + String.format("%X", tag) + ": " + hexData);
+                // Check if it looks like a PAN (numeric, 13-19 digits)
+                if (hexData.matches("[0-9A-F]{26,38}")) { // 13-19 digits in hex
+                    pan = hexData.replace("F", "");
+                    if (pan.length() >= 13 && pan.length() <= 19) {
+                        Log.d(TAG, "PAN found via alternative tag " + String.format("%X", tag) + ": " + pan);
+                        return pan;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
     private byte RFCardIsExist() throws RemoteException {
         if (aidlShellMonitor == null) {
             Log.e(TAG, "aidlShellMonitor is null");
