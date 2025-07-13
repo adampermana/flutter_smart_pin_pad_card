@@ -449,16 +449,275 @@ public class CardReader extends Service implements ICardReader {
             setResult(cardData);
         }
 
+        // Replace the processICCard() method in CardReader.java
         private void processICCard() throws RemoteException {
             byte[] data = icCard.reset(0);
             if (data != null && data.length > 0) {
+                Log.d(TAG, "IC Card reset successful, starting EMV process");
                 closeMag();
                 closeRf();
 
-                // Simplified IC card processing
-                cardData = new CardData(CardData.EReturnType.OK, CardData.ECardType.IC);
-                cardData.setPan("************"); // Placeholder
-                setResult(cardData);
+                try {
+                    // Get EMV helper
+                    IEmv emvHelper = DeviceServiceManagers.getInstance().getEmvHelper();
+                    if (emvHelper == null) {
+                        Log.e(TAG, "EMV helper is null");
+                        setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
+                        return;
+                    }
+
+                    emvHelper.init(EinputType.CT);
+
+                    emvHelper.setProcessListener(new ITransProcessListener() {
+                        @Override
+                        public int onReqAppAidSelect(String[] aids) {
+                            if (aids != null && aids.length > 0) {
+                                Log.d(TAG, "Selecting AID index: 0 from " + aids.length + " options");
+                                return 0;
+                            }
+                            return -1;
+                        }
+
+                        @Override
+                        public void onUpToAppEmvCandidateItem(EmvCandidateItem emvCandidateItem) {
+                            if (emvCandidateItem != null) {
+                                Log.d(TAG, "Selected candidate item: " + emvCandidateItem);
+                            }
+                        }
+
+                        @Override
+                        public void onUpToAppKernelType(EKernelType eKernelType) {
+                            Log.d(TAG, "Kernel type: " + eKernelType);
+                        }
+
+                        @Override
+                        public boolean onReqFinalAidSelect() {
+                            return true;
+                        }
+
+                        @Override
+                        public boolean onConfirmCardInfo(String cardNo) {
+                            Log.d(TAG, "Confirming card number: " + cardNo);
+                            return true;
+                        }
+
+                        @Override
+                        public EmvPinEnter onReqGetPinProc(EPinType pinType, int leftTimes) {
+                            Log.d(TAG, "PIN request - Type: " + pinType + ", Tries left: " + leftTimes);
+                            // Return null to skip PIN entry for card reading
+                            return null;
+                        }
+
+                        @Override
+                        public boolean onDisplayPinVerifyStatus(int PinTryCounter) {
+                            Log.d(TAG, "PIN try counter: " + PinTryCounter);
+                            return true;
+                        }
+
+                        @Override
+                        public boolean onReqUserAuthProc(int certype, String certnumber) {
+                            Log.d(TAG, "Certificate auth - Type: " + certype + ", Number: " + certnumber);
+                            return true;
+                        }
+
+                        @Override
+                        public EmvOnlineResp onReqOnlineProc() {
+                            Log.d(TAG, "Online processing requested");
+                            EmvOnlineResp onlineResp = new EmvOnlineResp();
+                            onlineResp.setAuthRespCode("00".getBytes()); // Approve
+                            return onlineResp;
+                        }
+
+                        @Override
+                        public boolean onSecCheckCardProc() {
+                            return false;
+                        }
+
+                        @Override
+                        public List<Combination> onLoadCombinationParam() {
+                            List<Combination> combinations = new ArrayList<>();
+                            try {
+                                // Visa
+                                Combination visa = new Combination();
+                                visa.setUcAidLen((byte) 7);
+                                visa.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10});
+                                visa.setUcKernIDLen((byte) 1);
+                                visa.setAucKernelID(new byte[]{(byte) 0x03});
+                                combinations.add(visa);
+
+                                // MasterCard
+                                Combination masterCard = new Combination();
+                                masterCard.setUcAidLen((byte) 7);
+                                masterCard.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10});
+                                masterCard.setUcKernIDLen((byte) 1);
+                                masterCard.setAucKernelID(new byte[]{(byte) 0x02});
+                                combinations.add(masterCard);
+
+                                // JCB
+                                Combination jcb = new Combination();
+                                jcb.setUcAidLen((byte) 7);
+                                jcb.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x00, 0x65, 0x10, 0x10});
+                                jcb.setUcKernIDLen((byte) 1);
+                                jcb.setAucKernelID(new byte[]{(byte) 0x0B});
+                                combinations.add(jcb);
+
+                                // GPN
+                                Combination gpn = new Combination();
+                                gpn.setUcAidLen((byte) 7);
+                                gpn.setAucAID(new byte[]{(byte) 0xA0, 0x00, 0x00, 0x06, 0x02, 0x10, 0x10});
+                                gpn.setUcKernIDLen((byte) 1);
+                                gpn.setAucKernelID(new byte[]{(byte) 0x15});
+                                combinations.add(gpn);
+
+                                Log.d(TAG, "Loaded " + combinations.size() + " card combinations");
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error creating combinations: " + e.getMessage());
+                            }
+                            return combinations;
+                        }
+
+                        @Override
+                        public EmvAidParam onFindCurAidParamProc(String sAid) {
+                            Log.d(TAG, "Finding AID parameters for: " + sAid);
+                            try {
+                                EmvAidParam emvAidParam = new EmvAidParam();
+                                AidParam aidParam = new AidParam();
+                                aidParam.init(context);
+                                emvAidParam.setAid(sAid);
+                                aidParam.saveAll();
+                                return emvAidParam;
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error loading AID param: " + e.getMessage());
+                                return null;
+                            }
+                        }
+
+                        @Override
+                        public void onRemoveCardProc() {
+                            Log.d(TAG, "Card removal requested");
+                        }
+
+                        @Override
+                        public EmvCapk onFindIssCapkParamProc(String sAid, byte bCapkIndex) {
+                            Log.d(TAG, "Finding CAPK for AID: " + sAid + ", Index: " + bCapkIndex);
+                            try {
+                                CapkParam capkParam = new CapkParam();
+                                capkParam.init(context);
+                                capkParam.saveAll();
+                                EmvCapk capk = new EmvCapk();
+                                return capk;
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error loading CAPK: " + e.getMessage());
+                                return null;
+                            }
+                        }
+                    });
+
+                    // Set terminal info
+                    EmvTerminalInfo terminalInfo = new EmvTerminalInfo();
+                    terminalInfo.setUcTerminalType((byte) 0x22);
+                    terminalInfo.setUcTerminalEntryMode((byte) 0x05);
+                    emvHelper.setTerminalInfo(terminalInfo);
+
+                    // Set transaction parameters
+                    EmvTransPraram transParam = new EmvTransPraram((byte) 0x00);
+                    transParam.setAmount(1000L);
+                    transParam.setAucTransDate("250220");
+                    transParam.setAucTransTime("120000");
+                    emvHelper.setTransPraram(transParam);
+
+                    // Start EMV process
+                    Log.d(TAG, "Starting EMV process...");
+                    EmvOutCome emvOutCome = emvHelper.StartEmvProcess();
+                    Log.d(TAG, "EMV Process completed with result: " + emvOutCome);
+
+                    // Debug all available EMV TLV data
+                    debugEmvTlvData(emvHelper);
+
+                    // Extract card data from EMV TLV data
+                    String pan = extractPanFromEmv(emvHelper);
+                    String expiryDate = null;
+                    String track2 = null;
+
+                    // Try to get expiry date (Tag 5F24)
+                    byte[] expiryData = emvHelper.getTlv(0x5F24);
+                    if (expiryData != null && expiryData.length >= 2) {
+                        expiryDate = BytesUtil.bytes2HexString(expiryData);
+                        Log.d(TAG, "Expiry date extracted: " + expiryDate);
+                    }
+
+                    // Try to get track2 data (Tag 57)
+                    byte[] track2Data = emvHelper.getTlv(0x57);
+                    if (track2Data != null && track2Data.length > 0) {
+                        track2 = BytesUtil.bytes2HexString(track2Data);
+                        Log.d(TAG, "Track2 extracted: " + track2);
+                    }
+
+                    // If we still don't have PAN, try alternative tags
+                    if (pan == null || pan.isEmpty()) {
+                        // Try Application PAN (Tag 5A)
+                        byte[] altPanData = emvHelper.getTlv(0x5A);
+                        if (altPanData != null) {
+                            pan = BytesUtil.bytes2HexString(altPanData).replace("F", "");
+                            Log.d(TAG, "Alternative PAN extracted: " + pan);
+                        }
+                    }
+
+                    // Create card data
+                    if (pan != null && !pan.isEmpty()) {
+                        cardData = new CardData(CardData.EReturnType.OK, CardData.ECardType.IC);
+                        cardData.setPan(pan);
+
+                        if (expiryDate != null && !expiryDate.isEmpty()) {
+                            cardData.setExpiryDate(expiryDate);
+                        }
+
+                        if (track2 != null && !track2.isEmpty()) {
+                            cardData.setTrack2(track2);
+                        }
+
+                        Log.d(TAG, "IC Card data successfully extracted - PAN: " + pan);
+                        setResult(cardData);
+                    } else {
+                        Log.e(TAG, "No PAN data found in EMV response");
+                        // Try to extract from track2 if available
+                        if (track2 != null && !track2.isEmpty()) {
+                            try {
+                                // Track2 format: PAN=EXPIRYSERVICECODE...
+                                String track2String = track2;
+                                int separatorIndex = track2String.indexOf("D"); // D or = separator
+                                if (separatorIndex == -1) {
+                                    separatorIndex = track2String.indexOf("=");
+                                }
+
+                                if (separatorIndex > 0) {
+                                    String extractedPan = track2String.substring(0, separatorIndex);
+
+                                    cardData = new CardData(CardData.EReturnType.OK, CardData.ECardType.IC);
+                                    cardData.setPan(extractedPan);
+                                    cardData.setTrack2(track2);
+
+                                    if (separatorIndex + 4 < track2String.length()) {
+                                        String extractedExpiry = track2String.substring(separatorIndex + 1, separatorIndex + 5);
+                                        cardData.setExpiryDate(extractedExpiry);
+                                    }
+
+                                    Log.d(TAG, "PAN extracted from Track2: " + extractedPan);
+                                    setResult(cardData);
+                                    return;
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error extracting from track2: " + e.getMessage());
+                            }
+                        }
+
+                        setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
+                    }
+
+                } catch (Exception e) {
+                    Log.e(TAG, "EMV processing error: " + e.getMessage(), e);
+                    setResult(new CardData(CardData.EReturnType.OPEN_IC_RESET_ERR));
+                }
             } else {
                 CloseAll();
                 Log.e(TAG, "IC Card reset failed");
