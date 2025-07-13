@@ -43,7 +43,6 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.SystemClock;
-
 import androidx.annotation.Nullable;
 
 
@@ -174,11 +173,7 @@ public class CardReader extends Service implements ICardReader {
 
     private CardReader(Context context) {
         this.context = context;
-
-        // Don't initialize services in constructor, do it lazily
-        AppLog.d(TAG, "CardReader created with context: " + (this.context != null));
     }
-
 
 
     public synchronized static CardReader getInstance(Context context) {
@@ -201,23 +196,21 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean openMag() {
-        try {
-            // Re-initialize if null
-            if (magCard == null) {
-                magCard = DeviceServiceManagers.getInstance().getMagCardReader();
-            }
 
-            if (magCard == null) {
-                AppLog.e(TAG, "openMag: magCard service is null");
-                return false;
-            }
+        try {
 
             return magCard.open();
+
         } catch (RemoteException e) {
+
             e.printStackTrace();
+
             AppLog.e(TAG, "openMag: false ==============");
+
             return false;
+
         }
+
     }
 
 
@@ -228,16 +221,21 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean closeMag() {
+
         try {
-            if (magCard != null) {
-                return magCard.close();
-            }
-            return true;
+
+            return magCard.close();
+
         } catch (RemoteException e) {
+
             e.printStackTrace();
+
             AppLog.e(TAG, "closeMag: false ==============");
+
             return false;
+
         }
+
     }
 
 
@@ -248,25 +246,22 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean openIc() {
-        try {
-            // Re-initialize if null
-            if (icCard == null) {
-                icCard = DeviceServiceManagers.getInstance().getICCardReader();
-            }
 
-            if (icCard == null) {
-                AppLog.e(TAG, "openIc: icCard service is null");
-                return false;
-            }
+        try {
 
             return icCard.open();
-        } catch (RemoteException e) {
-            e.printStackTrace();
-            AppLog.e(TAG, "openIc: false ==============");
-            return false;
-        }
-    }
 
+        } catch (RemoteException e) {
+
+            e.printStackTrace();
+
+            AppLog.e(TAG, "openIc: false ==============");
+
+            return false;
+
+        }
+
+    }
 
 
     /**
@@ -276,16 +271,21 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean closeIc() {
+
         try {
-            if (icCard != null) {
-                return icCard.close();
-            }
-            return true; // Return true jika sudah null (sudah closed)
+
+            return icCard.close();
+
         } catch (RemoteException e) {
+
             e.printStackTrace();
+
             AppLog.e(TAG, "closeIc: false ==============");
+
             return false;
+
         }
+
     }
 
 
@@ -296,25 +296,22 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean openRf() {
-        try {
-            // Re-initialize if null
-            if (rfCard == null) {
-                rfCard = DeviceServiceManagers.getInstance().getRfCardReader();
-            }
 
-            if (rfCard == null) {
-                AppLog.e(TAG, "openRf: rfCard service is null");
-                return false;
-            }
+        try {
 
             return rfCard.open();
-        } catch (RemoteException e) {
-            e.printStackTrace();
-            AppLog.e(TAG, "openRf: false ==============");
-            return false;
-        }
-    }
 
+        } catch (RemoteException e) {
+
+            e.printStackTrace();
+
+            AppLog.e(TAG, "openRf: false ==============");
+
+            return false;
+
+        }
+
+    }
 
 
     /**
@@ -324,92 +321,38 @@ public class CardReader extends Service implements ICardReader {
      */
 
     private boolean closeRf() {
-        try {
-            if (rfCard != null) {
-                return rfCard.close();
-            }
-            return true;
-        } catch (RemoteException e) {
-            e.printStackTrace();
-            AppLog.e(TAG, "closeRf: false ==============");
-            return false;
-        }
-    }
 
+        try {
+
+            return rfCard.close();
+
+        } catch (RemoteException e) {
+
+            e.printStackTrace();
+
+            AppLog.e(TAG, "closeRf: false ==============");
+
+            return false;
+
+        }
+
+    }
 
 
     @Override
 
     public void startFindCard(boolean isMag, boolean isIcc, boolean isRf, int outtime,
+
                               onReadCardListener onReadCardListener) {
 
         AppLog.e(TAG, "startFindCard: isMag= " + isMag + " isIcc=" + isIcc + " isRf=" + isRf + " outtime=" + outtime);
 
-        // Re-bind DeviceServiceManagers dengan context yang benar jika perlu
-        if (context != null) {
-            try {
-                DeviceServiceManagers.getInstance().bindDeviceService(context);
-                AppLog.d(TAG, "Re-bound DeviceServiceManagers with context");
-            } catch (Exception e) {
-                AppLog.e(TAG, "Failed to re-bind DeviceServiceManagers: " + e.getMessage());
-            }
-        }
-
-        // Re-initialize services
-        try {
-            if (magCard == null) {
-                magCard = DeviceServiceManagers.getInstance().getMagCardReader();
-                AppLog.d(TAG, "Initialized magCard: " + (magCard != null));
-            }
-            if (icCard == null) {
-                icCard = DeviceServiceManagers.getInstance().getICCardReader();
-                AppLog.d(TAG, "Initialized icCard: " + (icCard != null));
-            }
-            if (rfCard == null) {
-                rfCard = DeviceServiceManagers.getInstance().getRfCardReader();
-                AppLog.d(TAG, "Initialized rfCard: " + (rfCard != null));
-            }
-            if (aidlShellMonitor == null) {
-                aidlShellMonitor = DeviceServiceManagers.getInstance().getShellMonitor();
-                AppLog.d(TAG, "Initialized aidlShellMonitor: " + (aidlShellMonitor != null));
-            }
-        } catch (Exception e) {
-            AppLog.e(TAG, "Error initializing services: " + e.getMessage());
-            if (onReadCardListener != null) {
-                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OTHER_ERR));
-            }
-            return;
-        }
-
-        // Check if required services are available after initialization
-        if (isMag && magCard == null) {
-            AppLog.e(TAG, "MagCard service not available after re-initialization");
-            if (onReadCardListener != null) {
-                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_MAG_ERR));
-            }
-            return;
-        }
-
-        if (isIcc && icCard == null) {
-            AppLog.e(TAG, "ICCard service not available after re-initialization");
-            if (onReadCardListener != null) {
-                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_IC_ERR));
-            }
-            return;
-        }
-
-        if (isRf && rfCard == null) {
-            AppLog.e(TAG, "RFCard service not available after re-initialization");
-            if (onReadCardListener != null) {
-                onReadCardListener.getReadState(new CardData(CardData.EReturnType.OPEN_RF_ERR));
-            }
-            return;
-        }
-
-        // Continue with existing implementation...
         this.isMag = isMag;
+
         this.isIcc = isIcc;
+
         this.isRf = isRf;
+
         this.onReadCardListener = onReadCardListener;
 
 
@@ -485,6 +428,7 @@ public class CardReader extends Service implements ICardReader {
         @Override
 
         public void run() {
+
             CloseAll();
 
             SystemClock.sleep(20);
