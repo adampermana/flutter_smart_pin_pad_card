@@ -450,6 +450,7 @@ public class ContactEmvProcess extends ABaseTransProcess {
     public byte[] getTLV(int paramInt) {
         try {
             AppLog.e(TAG,"getTlv TAG= " + paramInt );
+            AppLog.v(TAG, "value getTlv TAG= " + paramInt);
             return emvL2.EMV_GetTLVData(paramInt);
         } catch (RemoteException e) {
             e.printStackTrace();
