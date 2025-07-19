@@ -13,7 +13,7 @@ import com.topwise.toptool.impl.TopTool;
  * 描述: 保存 ic data
  * 作者:  wangweicheng
  */
-public class .EmvResultUtlis {
+public class EmvResultUtlis {
     private static final String TAG = EmvResultUtlis.class.getSimpleName();
     /**
      *    * 交易结果
