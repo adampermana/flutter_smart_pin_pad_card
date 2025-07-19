@@ -14,6 +14,7 @@ abstract class FlutterSmartPinPadCardsPlatform extends PlatformInterface {
     _instance = instance;
   }
 
+  // Card Reader Methods
   Future<Map<dynamic, dynamic>> startSwipeCardReading() {
     throw UnimplementedError('startSwipeCardReading() has not been implemented.');
   }
@@ -28,5 +29,58 @@ abstract class FlutterSmartPinPadCardsPlatform extends PlatformInterface {
 
   Future<void> stopInsertCardReading() {
     throw UnimplementedError('stopInsertCardReading() has not been implemented.');
+  }
+
+  // PinPad Methods
+  Future<void> initPinpad() {
+    throw UnimplementedError('initPinpad() has not been implemented.');
+  }
+
+  Future<void> closePinpad() {
+    throw UnimplementedError('closePinpad() has not been implemented.');
+  }
+
+  Future<void> getPinpadStatus() {
+    throw UnimplementedError('getPinpadStatus() has not been implemented.');
+  }
+
+  Future<void> createPinBlock() {
+    throw UnimplementedError('createPinBlock() has not been implemented.');
+  }
+
+  Future<void> verifyPin() {
+    throw UnimplementedError('verifyPin() has not been implemented.');
+  }
+
+  Future<void> loadMainKey() {
+    throw UnimplementedError('loadMainKey() has not been implemented.');
+  }
+
+  Future<void> loadWorkKey() {
+    throw UnimplementedError('loadWorkKey() has not been implemented.');
+  }
+
+  Future<void> getKeyState() {
+    throw UnimplementedError('getKeyState() has not been implemented.');
+  }
+
+  Future<void> getMac() {
+    throw UnimplementedError('getMac() has not been implemented.');
+  }
+
+  Future<void> getRandom() {
+    throw UnimplementedError('getRandom() has not been implemented.');
+  }
+
+  Future<void> changePin() {
+    throw UnimplementedError('changePin() has not been implemented.');
+  }
+
+  Future<void> authorizePin() {
+    throw UnimplementedError('authorizePin() has not been implemented.');
+  }
+
+  Future<void> createPin() {
+    throw UnimplementedError('createPin() has not been implemented.');
   }
 }

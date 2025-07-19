@@ -1,6 +1,8 @@
 package com.adpstore.flutter_smart_pin_pad_cards;
 
 import androidx.annotation.NonNull;
+
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.RemoteException;
@@ -31,7 +33,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
     private boolean isCardReading = false;
     private ICardReader cardReader;
     private Handler mainHandler;
-    private boolean isInitialized = false;
+    private PinpadManager pinpadManager;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPlugin.FlutterPluginBinding flutterPluginBinding) {
@@ -40,29 +42,16 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         channel.setMethodCallHandler(this);
         mainHandler = new Handler(Looper.getMainLooper());
 
-        Log.d(TAG, "Plugin attached to engine");
+        // Initialize device service
+        boolean bindResult = DeviceServiceManagers.getInstance().bindDeviceService(context);
+        Log.d(TAG, "Device service bind result: " + bindResult);
 
-        // Initialize services in background thread
-        new Thread(this::initializeServices).start();
+        // Initialize EMV service, Card Reader, and Pinpad Manager
+        initializeServices();
     }
 
     private void initializeServices() {
         try {
-            Log.d(TAG, "Initializing services...");
-
-            // Wait for application to initialize if needed
-            SmartPosApplication app = SmartPosApplication.getInstance();
-            if (app != null) {
-                app.waitForInitialization(5000); // Wait up to 5 seconds
-            }
-
-            // Initialize device service if not already done
-            boolean bindResult = DeviceServiceManagers.getInstance().bindDeviceService(context);
-            Log.d(TAG, "Device service bind result: " + bindResult);
-
-            // Wait a bit for service to bind
-            Thread.sleep(1000);
-
             // Initialize EMV service
             aidlEmvL2 = DeviceServiceManagers.getInstance().getEmvL2();
             if (aidlEmvL2 == null) {
@@ -79,22 +68,22 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 Log.d(TAG, "Card Reader initialized successfully");
             }
 
-            isInitialized = true;
-            Log.d(TAG, "All services initialized successfully");
+            // Initialize Pinpad Manager
+            pinpadManager = PinpadManager.getInstance();
+            if (pinpadManager != null) {
+                boolean pinpadInit = pinpadManager.initPinpad();
+                Log.d(TAG, "Pinpad initialized: " + pinpadInit);
+            } else {
+                Log.e(TAG, "Pinpad Manager initialization failed");
+            }
 
         } catch (Exception e) {
-            Log.e(TAG, "Error initializing services: " + e.getMessage(), e);
+            Log.e(TAG, "Error initializing services: " + e.getMessage());
         }
     }
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-        // Check if services are initialized
-        if (!isInitialized) {
-            result.error("NOT_INITIALIZED", "Plugin services are not yet initialized. Please wait and try again.", null);
-            return;
-        }
-
         switch (call.method) {
             case "getPlatformVersion":
                 result.success("Android " + android.os.Build.VERSION.RELEASE);
@@ -102,7 +91,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
             case "startSwipeCardReading":
                 if (isCardReading) {
-                    Log.i(TAG, "startSwipeCardReading: Card reader is already active");
                     result.error("ALREADY_READING", "Card reader is already active", null);
                     return;
                 }
@@ -111,12 +99,10 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
             case "stopSwipeCardReading":
                 stopSwipeCardReading(result);
-                Log.i(TAG, "stopSwipeCardReading called");
                 break;
 
             case "startInsertCardReading":
                 if (isCardReading) {
-                    Log.i(TAG, "startInsertCardReading: Card reader is already active");
                     result.error("ALREADY_READING", "Card reader is already active", null);
                     return;
                 }
@@ -127,10 +113,33 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleStopCardReading(result);
                 break;
 
+            // PIN Block methods
+            case "createPinBlock":
+                handleCreatePinBlock(call, result);
+                break;
+
+            case "verifyPin":
+                handleVerifyPin(call, result);
+                break;
+
+            case "initPinpad":
+                handleInitPinpad(result);
+                break;
+
+            case "closePinpad":
+                handleClosePinpad(result);
+                break;
+
+            case "getPinpadStatus":
+                handleGetPinpadStatus(result);
+                break;
+
             default:
                 result.notImplemented();
         }
     }
+
+    // ... existing card reading methods remain the same ...
 
     private void handleStartCardReading(MethodCall call, final Result result) {
         if (cardReader == null) {
@@ -147,57 +156,46 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         isCardReading = true;
         pendingResult = result;
 
-        Log.d(TAG, String.format("Starting card reading - Mag: %s, IC: %s, RF: %s, Timeout: %d",
-                enableMag, enableIcc, enableRf, timeout));
-
         cardReader.startFindCard(enableMag, enableIcc, enableRf, timeout, new CardReader.onReadCardListener() {
             @Override
             public void getReadState(final CardData cardData) {
                 mainHandler.post(() -> {
-                    try {
-                        if (cardData != null && cardData.getEreturnType() == CardData.EReturnType.OK) {
-                            Map<String, Object> resultMap = new HashMap<>();
+                    if (cardData != null && cardData.getEreturnType() == CardData.EReturnType.OK) {
+                        Map<String, Object> resultMap = new HashMap<>();
 
-                            // Ensure card data is properly mapped
-                            resultMap.put("cardType", cardData.getEcardType().toString());
-                            resultMap.put("pan", cardData.getPan());
-                            resultMap.put("cardNumber", cardData.getPan()); // For compatibility
-                            resultMap.put("expiryDate", cardData.getExpiryDate());
-                            resultMap.put("serviceCode", cardData.getServiceCode());
+                        // Pastikan data kartu dimasukkan ke map
+                        resultMap.put("cardType", cardData.getEcardType().toString());
+                        resultMap.put("pan", cardData.getPan());
+                        resultMap.put("expiryDate", cardData.getExpiryDate());
+                        resultMap.put("serviceCode", cardData.getServiceCode());
 
-                            if (cardData.getTrack1() != null && !cardData.getTrack1().isEmpty()) {
-                                resultMap.put("track1", cardData.getTrack1());
-                            }
-                            if (cardData.getTrack2() != null && !cardData.getTrack2().isEmpty()) {
-                                resultMap.put("track2", cardData.getTrack2());
-                            }
-                            if (cardData.getTrack3() != null && !cardData.getTrack3().isEmpty()) {
-                                resultMap.put("track3", cardData.getTrack3());
-                            }
-
-                            Log.d(TAG, "Card data retrieved successfully: " + resultMap.toString());
-
-                            isCardReading = false;
-                            if (pendingResult != null) {
-                                pendingResult.success(resultMap);
-                                pendingResult = null;
-                            }
-                        } else {
-                            String error = (cardData != null) ?
-                                    cardData.getEreturnType().toString() : "Unknown error";
-                            sendError("READ_ERROR", "Failed to read card: " + error);
+                        if (cardData.getTrack1() != null) {
+                            resultMap.put("track1", cardData.getTrack1());
                         }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error processing card data: " + e.getMessage(), e);
-                        sendError("PROCESSING_ERROR", "Error processing card data: " + e.getMessage());
+                        if (cardData.getTrack2() != null) {
+                            resultMap.put("track2", cardData.getTrack2());
+                        }
+                        if (cardData.getTrack3() != null) {
+                            resultMap.put("track3", cardData.getTrack3());
+                        }
+
+                        Log.d(TAG, "Card data retrieved: " + resultMap.toString());
+
+                        isCardReading = false;
+                        if (pendingResult != null) {
+                            pendingResult.success(resultMap);
+                            pendingResult = null;
+                        }
+                    } else {
+                        String error = (cardData != null) ?
+                                cardData.getEreturnType().toString() : "Unknown error";
+                        sendError("READ_ERROR", "Failed to read card: " + error);
                     }
                 });
             }
 
             @Override
             public void onNotification(CardData.EReturnType eReturnType) {
-                Log.d(TAG, "Card reader notification: " + eReturnType.toString());
-
                 switch (eReturnType) {
                     case RF_MULTI_CARD:
                         mainHandler.post(() -> {
@@ -238,7 +236,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             cardReader.cancel();
             isCardReading = false;
             result.success(null);
-            Log.i(TAG, "stopInsertCardReading completed");
         } else {
             result.error("STOP_ERROR", "Card reader not active", null);
         }
@@ -246,7 +243,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
     private void startSwipeCardReading(final Result result) {
         if (aidlEmvL2 == null) {
-            result.error("START_ERROR", "EMV service not available", null);
+            result.error("START_ERROR", "Card reader hardware not available", null);
             return;
         }
 
@@ -254,20 +251,14 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             isCardReading = true;
             pendingResult = result;
 
-            Log.d(TAG, "Starting swipe card reading...");
-
             aidlEmvL2.checkCard(true, false, false, TIME_OUT, new AidlCheckCardListener.Stub() {
                 @Override
                 public void onFindMagCard(TrackData trackData) throws RemoteException {
-                    Log.d(TAG, "Magnetic card found");
-
-                    Map<String, Object> cardData = new HashMap<>();
-                    cardData.put("cardType", "MAG");
-                    cardData.put("track1", trackData.getFirstTrackData());
-                    cardData.put("track2", trackData.getSecondTrackData());
-                    cardData.put("track3", trackData.getThirdTrackData());
+                    Map<String, String> cardData = new HashMap<>();
+                    cardData.put("firstTrack", trackData.getFirstTrackData());
+                    cardData.put("secondTrack", trackData.getSecondTrackData());
+                    cardData.put("thirdTrack", trackData.getThirdTrackData());
                     cardData.put("cardNumber", trackData.getCardno());
-                    cardData.put("pan", trackData.getCardno()); // For compatibility
                     cardData.put("expiryDate", trackData.getExpiryDate());
                     cardData.put("serviceCode", trackData.getServiceCode());
 
@@ -280,41 +271,37 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
                 @Override
                 public void onSwipeCardFail() throws RemoteException {
-                    Log.e(TAG, "Swipe card failed");
                     sendError("SWIPE_FAILED", "Failed to read card");
                 }
 
                 @Override
                 public void onFindICCard() throws RemoteException {
-                    Log.d(TAG, "IC card detected in swipe mode (not implemented)");
+                    // Not implemented in this version
                 }
 
                 @Override
                 public void onFindRFCard() throws RemoteException {
-                    Log.d(TAG, "RF card detected in swipe mode (not implemented)");
+                    // Not implemented in this version
                 }
 
                 @Override
                 public void onTimeout() throws RemoteException {
-                    Log.e(TAG, "Card reading timeout");
                     sendError("TIMEOUT", "Card reading timed out");
                 }
 
                 @Override
                 public void onCanceled() throws RemoteException {
-                    Log.d(TAG, "Card reading cancelled");
                     sendError("CANCELLED", "Card reading was cancelled");
                 }
 
                 @Override
                 public void onError(int error) throws RemoteException {
-                    Log.e(TAG, "Card reader error: " + error);
                     sendError("READER_ERROR", "Card reader error: " + error);
                 }
             });
 
         } catch (RemoteException e) {
-            Log.e(TAG, "Remote exception during card reading: " + e.getMessage(), e);
+            Log.e(TAG, "Remote exception during card reading: " + e.getMessage());
             result.error("START_ERROR", "Failed to start card reading: " + e.getMessage(), null);
             isCardReading = false;
         }
@@ -326,9 +313,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 aidlEmvL2.cancelCheckCard();
                 isCardReading = false;
                 result.success(null);
-                Log.d(TAG, "Swipe card reading stopped");
             } catch (RemoteException e) {
-                Log.e(TAG, "Error stopping swipe card reading: " + e.getMessage());
                 result.error("STOP_ERROR", "Failed to stop card reader: " + e.getMessage(), null);
             }
         } else {
@@ -336,8 +321,308 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
+    // PIN Block related methods
+    private void handleCreatePinBlock(MethodCall call, Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            String pin = (String) arguments.get("pin");
+            String cardNumber = (String) arguments.get("cardNumber");
+            Integer format = (Integer) arguments.get("format");
+            Integer keyIndex = (Integer) arguments.get("keyIndex");
+            Integer encryptionType = (Integer) arguments.get("encryptionType");
+
+            // Validate parameters
+            if (pin == null || cardNumber == null) {
+                result.error("INVALID_PARAMS", "PIN and card number are required", null);
+                return;
+            }
+
+            // Set default values if not provided
+            if (format == null) format = PinpadManager.PIN_BLOCK_FORMAT_0;
+            if (keyIndex == null) keyIndex = 0;
+            if (encryptionType == null) encryptionType = PinpadManager.ENCRYPT_3DES;
+
+            Map<String, Object> pinBlockResult = pinpadManager.createPinBlock(
+                    pin, cardNumber, format, keyIndex, encryptionType);
+
+            if ((Boolean) pinBlockResult.get("success")) {
+                result.success(pinBlockResult);
+            } else {
+                result.error("PINBLOCK_ERROR",
+                        (String) pinBlockResult.get("error"),
+                        pinBlockResult);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleCreatePinBlock: " + e.getMessage());
+            result.error("PINBLOCK_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleVerifyPin(MethodCall call, Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            String pinBlock = (String) arguments.get("pinBlock");
+            String cardNumber = (String) arguments.get("cardNumber");
+            Integer format = (Integer) arguments.get("format");
+            Integer keyIndex = (Integer) arguments.get("keyIndex");
+            Integer encryptionType = (Integer) arguments.get("encryptionType");
+
+            // Validate parameters
+            if (pinBlock == null || cardNumber == null) {
+                result.error("INVALID_PARAMS", "PIN block and card number are required", null);
+                return;
+            }
+
+            // Set default values if not provided
+            if (format == null) format = PinpadManager.PIN_BLOCK_FORMAT_0;
+            if (keyIndex == null) keyIndex = 0;
+            if (encryptionType == null) encryptionType = PinpadManager.ENCRYPT_3DES;
+
+            Map<String, Object> verifyResult = pinpadManager.verifyPin(
+                    pinBlock, cardNumber, format, keyIndex, encryptionType);
+
+            if ((Boolean) verifyResult.get("success")) {
+                result.success(verifyResult);
+            } else {
+                result.error("VERIFY_ERROR",
+                        (String) verifyResult.get("error"),
+                        verifyResult);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleVerifyPin: " + e.getMessage());
+            result.error("VERIFY_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleInitPinpad(Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            boolean initResult = pinpadManager.initPinpad();
+            if (initResult) {
+                result.success(true);
+            } else {
+                result.error("INIT_ERROR", "Failed to initialize pinpad", null);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleInitPinpad: " + e.getMessage());
+            result.error("INIT_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleClosePinpad(Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            pinpadManager.closePinpad();
+            result.success(null);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleClosePinpad: " + e.getMessage());
+            result.error("CLOSE_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleGetPinpadStatus(Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            Map<String, Object> status = pinpadManager.getPinpadStatus();
+            result.success(status);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleGetPinpadStatus: " + e.getMessage());
+            result.error("STATUS_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    // Additional PIN block utility methods
+    private void handleLoadMainKey(MethodCall call, Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            Integer keyIndex = (Integer) arguments.get("keyIndex");
+            String keyDataHex = (String) arguments.get("keyData");
+            String checkValueHex = (String) arguments.get("checkValue");
+
+            if (keyIndex == null || keyDataHex == null) {
+                result.error("INVALID_PARAMS", "Key index and key data are required", null);
+                return;
+            }
+
+            byte[] keyData = hexToBytes(keyDataHex);
+            byte[] checkValue = checkValueHex != null ? hexToBytes(checkValueHex) : null;
+
+            boolean loadResult = pinpadManager.loadMainKey(keyIndex, keyData, checkValue);
+            result.success(loadResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleLoadMainKey: " + e.getMessage());
+            result.error("LOAD_KEY_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleLoadWorkKey(MethodCall call, Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            Integer keyType = (Integer) arguments.get("keyType");
+            Integer masterKeyId = (Integer) arguments.get("masterKeyId");
+            Integer workKeyId = (Integer) arguments.get("workKeyId");
+            String keyDataHex = (String) arguments.get("keyData");
+            String checkValueHex = (String) arguments.get("checkValue");
+
+            if (keyType == null || masterKeyId == null || workKeyId == null || keyDataHex == null) {
+                result.error("INVALID_PARAMS", "All key parameters are required", null);
+                return;
+            }
+
+            byte[] keyData = hexToBytes(keyDataHex);
+            byte[] checkValue = checkValueHex != null ? hexToBytes(checkValueHex) : null;
+
+            boolean loadResult = pinpadManager.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
+            result.success(loadResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleLoadWorkKey: " + e.getMessage());
+            result.error("LOAD_WORK_KEY_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleGetKeyState(MethodCall call, Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            Integer keyType = (Integer) arguments.get("keyType");
+            Integer keyIndex = (Integer) arguments.get("keyIndex");
+
+            if (keyType == null || keyIndex == null) {
+                result.error("INVALID_PARAMS", "Key type and key index are required", null);
+                return;
+            }
+
+            boolean keyState = pinpadManager.getKeyState(keyType, keyIndex);
+            result.success(keyState);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleGetKeyState: " + e.getMessage());
+            result.error("KEY_STATE_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleGetMac(MethodCall call, Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            // Convert arguments to Bundle for MAC calculation
+            Bundle param = new Bundle();
+            for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                if (value instanceof String) {
+                    param.putString(key, (String) value);
+                } else if (value instanceof Integer) {
+                    param.putInt(key, (Integer) value);
+                } else if (value instanceof Boolean) {
+                    param.putBoolean(key, (Boolean) value);
+                }
+            }
+
+            Map<String, Object> macResult = pinpadManager.getMac(param);
+            if ((Boolean) macResult.get("success")) {
+                result.success(macResult);
+            } else {
+                result.error("MAC_ERROR", (String) macResult.get("error"), macResult);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleGetMac: " + e.getMessage());
+            result.error("MAC_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleGetRandom(Result result) {
+        try {
+            if (pinpadManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+                return;
+            }
+
+            byte[] random = pinpadManager.getRandom();
+            if (random != null) {
+                result.success(bytesToHex(random));
+            } else {
+                result.error("RANDOM_ERROR", "Failed to generate random number", null);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleGetRandom: " + e.getMessage());
+            result.error("RANDOM_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    // Utility methods
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02X", b));
+        }
+        return result.toString();
+    }
+
+    private byte[] hexToBytes(String hex) {
+        if (hex == null || hex.isEmpty()) {
+            return new byte[0];
+        }
+
+        int len = hex.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                    + Character.digit(hex.charAt(i + 1), 16));
+        }
+        return data;
+    }
+
     private void sendError(String code, String message) {
-        Log.e(TAG, "Sending error: " + code + " - " + message);
         isCardReading = false;
         if (pendingResult != null) {
             pendingResult.error(code, message, null);
@@ -347,8 +632,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPlugin.FlutterPluginBinding binding) {
-        Log.d(TAG, "Plugin detached from engine");
-
         if (isCardReading) {
             if (aidlEmvL2 != null) {
                 try {
@@ -362,11 +645,16 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             }
         }
 
+        if (pinpadManager != null) {
+            pinpadManager.closePinpad();
+        }
+
+        DeviceServiceManagers.getInstance().unBindDeviceService();
         channel.setMethodCallHandler(null);
         aidlEmvL2 = null;
         cardReader = null;
+        pinpadManager = null;
         context = null;
         mainHandler = null;
-        isInitialized = false;
     }
 }

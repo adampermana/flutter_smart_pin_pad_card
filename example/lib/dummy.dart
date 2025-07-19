@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_smart_pin_pad_cards/card_data.dart';
 import 'package:flutter_smart_pin_pad_cards/flutter_smart_pin_pad_cards.dart';
+import 'package:flutter_smart_pin_pad_cards/pinpad_model.dart';
 import 'package:lottie/lottie.dart';
 
 // Menghapus enum dan case terkait createPin dan changePin
