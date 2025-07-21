@@ -192,6 +192,8 @@ public class PinpadManager {
                 xorResult[i] = (byte) (pinBytes[i] ^ panBytes[i]);
             }
 
+            Log.d(TAG, "PIN data before encryption: " + bytesToHex(xorResult));
+
             // Encrypt with specified algorithm
             return encryptPinBlock(xorResult, keyIndex, encryptionType);
 
@@ -288,25 +290,76 @@ public class PinpadManager {
     }
 
     /**
-     * Encrypt PIN Block using encryptByTdk method
+     * Encrypt PIN Block using multiple methods with fallback
      */
     private byte[] encryptPinBlock(byte[] pinBlock, int keyIndex, int encryptionType) {
         try {
+            Log.d(TAG, "Attempting PIN block encryption with keyIndex: " + keyIndex);
+
+            // Method 1: Try encryptByTdk without IV (most common approach)
             byte[] encryptedBlock = new byte[8];
-            byte[] iv = new byte[8]; // Initialization vector
+            int result = pinpad.encryptByTdk(keyIndex, MODE_ENCRYPT, null, pinBlock, encryptedBlock);
 
-            // Use encryptByTdk method from AidlPinpad
-            int result = pinpad.encryptByTdk(keyIndex, MODE_ENCRYPT, iv, pinBlock, encryptedBlock);
-
-            if (result == 0) { // Success
+            if (result == 0) {
+                Log.d(TAG, "PIN block encrypted successfully using encryptByTdk without IV");
                 return encryptedBlock;
             } else {
-                Log.e(TAG, "Encryption failed with code: " + result + " - " + getErrorDescription(result));
+                Log.w(TAG, "encryptByTdk without IV failed with code: " + result + " - " + getErrorDescription(result));
+            }
+
+            // Method 2: Try encryptByTdk with zero IV
+            byte[] iv = new byte[8]; // Zero IV
+            encryptedBlock = new byte[8];
+            result = pinpad.encryptByTdk(keyIndex, MODE_ENCRYPT, iv, pinBlock, encryptedBlock);
+
+            if (result == 0) {
+                Log.d(TAG, "PIN block encrypted successfully using encryptByTdk with zero IV");
+                return encryptedBlock;
+            } else {
+                Log.w(TAG, "encryptByTdk with zero IV failed with code: " + result + " - " + getErrorDescription(result));
+            }
+
+            // Method 3: Try cryptByTdk method (alternative encryption method)
+            encryptedBlock = new byte[8];
+            iv = new byte[8]; // Reset IV
+            result = pinpad.cryptByTdk(keyIndex, MODE_ENCRYPT, pinBlock, iv, encryptedBlock);
+
+            if (result == 0) {
+                Log.d(TAG, "PIN block encrypted successfully using cryptByTdk");
+                return encryptedBlock;
+            } else {
+                Log.w(TAG, "cryptByTdk failed with code: " + result + " - " + getErrorDescription(result));
+            }
+
+            // Method 4: Check if key exists and is valid
+            boolean keyState = pinpad.getKeyState(KEY_TYPE_PIK, keyIndex);
+            if (!keyState) {
+                Log.e(TAG, "Key at index " + keyIndex + " is not available or valid");
                 return null;
             }
 
+            // Method 5: Try with different key index (fallback to index 0)
+            if (keyIndex != 0) {
+                Log.d(TAG, "Trying encryption with fallback key index 0");
+                encryptedBlock = new byte[8];
+                result = pinpad.encryptByTdk(0, MODE_ENCRYPT, null, pinBlock, encryptedBlock);
+
+                if (result == 0) {
+                    Log.d(TAG, "PIN block encrypted successfully using fallback key index 0");
+                    return encryptedBlock;
+                } else {
+                    Log.w(TAG, "Fallback encryption failed with code: " + result + " - " + getErrorDescription(result));
+                }
+            }
+
+            Log.e(TAG, "All encryption methods failed");
+            return null;
+
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException during encryption: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "General exception during encryption: " + e.getMessage());
             return null;
         }
     }
@@ -363,22 +416,35 @@ public class PinpadManager {
     }
 
     /**
-     * Decrypt PIN Block using cryptByTdk method
+     * Decrypt PIN Block using multiple methods with fallback
      */
     private byte[] decryptPinBlock(byte[] encryptedBlock, int keyIndex, int encryptionType) {
         try {
+            // Method 1: Try cryptByTdk for decryption
             byte[] decryptedBlock = new byte[8];
             byte[] iv = new byte[8]; // Initialization vector for decryption
-
-            // Use cryptByTdk method from AidlPinpad for decryption
             int result = pinpad.cryptByTdk(keyIndex, MODE_DECRYPT, encryptedBlock, iv, decryptedBlock);
 
-            if (result == 0) { // Success
+            if (result == 0) {
+                Log.d(TAG, "PIN block decrypted successfully using cryptByTdk");
                 return decryptedBlock;
             } else {
-                Log.e(TAG, "Decryption failed with code: " + result + " - " + getErrorDescription(result));
-                return null;
+                Log.w(TAG, "cryptByTdk decryption failed with code: " + result + " - " + getErrorDescription(result));
             }
+
+            // Method 2: Try encryptByTdk for decryption (some implementations use same method)
+            decryptedBlock = new byte[8];
+            result = pinpad.encryptByTdk(keyIndex, MODE_DECRYPT, null, encryptedBlock, decryptedBlock);
+
+            if (result == 0) {
+                Log.d(TAG, "PIN block decrypted successfully using encryptByTdk");
+                return decryptedBlock;
+            } else {
+                Log.w(TAG, "encryptByTdk decryption failed with code: " + result + " - " + getErrorDescription(result));
+            }
+
+            Log.e(TAG, "All decryption methods failed");
+            return null;
 
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException during decryption: " + e.getMessage());
@@ -430,12 +496,6 @@ public class PinpadManager {
 
     /**
      * Change PIN (Ganti PIN) - Processing Code: 930000
-     * @param oldPinBlock Encrypted old PIN block
-     * @param newPinBlock Encrypted new PIN block
-     * @param cardNumber Card number (PAN)
-     * @param keyIndex Key index for encryption/decryption
-     * @param encryptionType Encryption type (3DES/AES)
-     * @return Map containing change PIN result
      */
     public Map<String, Object> changePin(String oldPinBlock, String newPinBlock,
                                          String cardNumber, int keyIndex, int encryptionType) {
@@ -513,12 +573,6 @@ public class PinpadManager {
 
     /**
      * PIN Authorization/Verification (Otorisasi PIN) - Processing Code: 940000
-     * @param pinBlock Encrypted PIN block
-     * @param cardNumber Card number (PAN)
-     * @param amount Transaction amount (optional)
-     * @param keyIndex Key index for decryption
-     * @param encryptionType Encryption type (3DES/AES)
-     * @return Map containing PIN authorization result
      */
     public Map<String, Object> authorizePin(String pinBlock, String cardNumber,
                                             Long amount, int keyIndex, int encryptionType) {
@@ -606,7 +660,9 @@ public class PinpadManager {
                 return false;
             }
 
-            return pinpad.loadMainkey(keyIndex, keyData, checkValue);
+            boolean result = pinpad.loadMainkey(keyIndex, keyData, checkValue);
+            Log.d(TAG, "Load main key result: " + result + " for index: " + keyIndex);
+            return result;
 
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException during key loading: " + e.getMessage());
@@ -625,7 +681,9 @@ public class PinpadManager {
                 return false;
             }
 
-            return pinpad.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
+            boolean result = pinpad.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
+            Log.d(TAG, "Load work key result: " + result + " for type: " + keyType + ", masterKeyId: " + masterKeyId + ", workKeyId: " + workKeyId);
+            return result;
 
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException during work key loading: " + e.getMessage());
@@ -643,7 +701,9 @@ public class PinpadManager {
                 return false;
             }
 
-            return pinpad.getKeyState(keyType, keyIndex);
+            boolean state = pinpad.getKeyState(keyType, keyIndex);
+            Log.d(TAG, "Key state for type " + keyType + ", index " + keyIndex + ": " + state);
+            return state;
 
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException during key state check: " + e.getMessage());
@@ -694,7 +754,9 @@ public class PinpadManager {
                 return null;
             }
 
-            return pinpad.getRandom();
+            byte[] random = pinpad.getRandom();
+            Log.d(TAG, "Generated random: " + (random != null ? bytesToHex(random) : "null"));
+            return random;
 
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException during random number generation: " + e.getMessage());
@@ -796,6 +858,8 @@ public class PinpadManager {
         switch (errorCode) {
             case 0:
                 return "Success";
+            case 22:
+                return "Key Not Found or Invalid Key Index";
             case AidlErrorCode.Pinpad.ERROR_NODEV:
                 return "No Device";
             case AidlErrorCode.Pinpad.ERROR_INPUTTIMES:
@@ -854,5 +918,61 @@ public class PinpadManager {
         }
 
         return status;
+    }
+
+    /**
+     * Debug method to test key loading and encryption
+     */
+    public Map<String, Object> debugKeyAndEncryption() {
+        Map<String, Object> debug = new HashMap<>();
+
+        try {
+            if (pinpad == null) {
+                debug.put("error", "Pinpad not initialized");
+                return debug;
+            }
+
+            // Test key states for different indices
+            for (int i = 0; i < 5; i++) {
+                boolean keyState = pinpad.getKeyState(KEY_TYPE_PIK, i);
+                debug.put("keyState_" + i, keyState);
+                Log.d(TAG, "Key state for index " + i + ": " + keyState);
+            }
+
+            // Test with a simple PIN block
+            String testPin = "1234";
+            String testCardNumber = "6019005090714267";
+
+            // Create a simple PIN block for testing
+            String pinData = "04" + testPin + "FFFFFFFFFF";
+            byte[] testPinBlock = hexToBytes(pinData);
+
+            debug.put("testPinData", pinData);
+            debug.put("testPinBlock", bytesToHex(testPinBlock));
+
+            // Try encryption with different key indices
+            for (int keyIndex = 0; keyIndex < 3; keyIndex++) {
+                try {
+                    byte[] encrypted = new byte[8];
+                    int result = pinpad.encryptByTdk(keyIndex, MODE_ENCRYPT, null, testPinBlock, encrypted);
+                    debug.put("encrypt_result_" + keyIndex, result);
+                    debug.put("encrypt_description_" + keyIndex, getErrorDescription(result));
+
+                    if (result == 0) {
+                        debug.put("encrypted_data_" + keyIndex, bytesToHex(encrypted));
+                        Log.d(TAG, "Encryption successful with key index " + keyIndex);
+                        break;
+                    }
+                } catch (Exception e) {
+                    debug.put("encrypt_error_" + keyIndex, e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            debug.put("exception", e.getMessage());
+            Log.e(TAG, "Debug exception: " + e.getMessage());
+        }
+
+        return debug;
     }
 }
