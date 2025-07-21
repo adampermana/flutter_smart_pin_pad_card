@@ -14,10 +14,10 @@ public class PinpadManager {
     private static PinpadManager instance;
 
     // PIN Block format constants
-    public static final int PIN_BLOCK_FORMAT_0 = 0;
-    public static final int PIN_BLOCK_FORMAT_1 = 1;
-    public static final int PIN_BLOCK_FORMAT_2 = 2;
-    public static final int PIN_BLOCK_FORMAT_3 = 3;
+    public static final int PIN_BLOCK_FORMAT_0 = 0; // ISO 9564-1 Format 0
+    public static final int PIN_BLOCK_FORMAT_1 = 1; // ISO 9564-1 Format 1
+    public static final int PIN_BLOCK_FORMAT_2 = 2; // ISO 9564-1 Format 2
+    public static final int PIN_BLOCK_FORMAT_3 = 3; // ISO 9564-1 Format 3
 
     // Encryption algorithms
     public static final int ENCRYPT_3DES = 0;
@@ -66,7 +66,7 @@ public class PinpadManager {
     }
 
     /**
-     * Create PIN Block
+     * Create PIN Block - Used for Create PIN operation (Processing Code 920000)
      * @param pin User entered PIN
      * @param cardNumber Card number (PAN)
      * @param format PIN Block format (0, 1, 2, 3)
@@ -82,6 +82,7 @@ public class PinpadManager {
             if (pinpad == null) {
                 result.put("success", false);
                 result.put("error", "Pinpad not initialized");
+                result.put("responseCode", "91"); // Host Down
                 return result;
             }
 
@@ -89,12 +90,14 @@ public class PinpadManager {
             if (pin == null || pin.isEmpty()) {
                 result.put("success", false);
                 result.put("error", "PIN cannot be empty");
+                result.put("responseCode", "21"); // No Action
                 return result;
             }
 
             if (pin.length() < 4 || pin.length() > 12) {
                 result.put("success", false);
                 result.put("error", "PIN length must be between 4 and 12 digits");
+                result.put("responseCode", "55"); // Incorrect PIN
                 return result;
             }
 
@@ -102,10 +105,11 @@ public class PinpadManager {
             if (cardNumber == null || cardNumber.isEmpty()) {
                 result.put("success", false);
                 result.put("error", "Card number cannot be empty");
+                result.put("responseCode", "21"); // No Action
                 return result;
             }
 
-            // Prepare card number (take last 12 digits and pad with zeros if needed)
+            // Format card number (take last 12 digits and pad with zeros if needed)
             String formattedCardNumber = formatCardNumber(cardNumber);
 
             // Create PIN Block based on format
@@ -127,6 +131,7 @@ public class PinpadManager {
                 default:
                     result.put("success", false);
                     result.put("error", "Unsupported PIN Block format: " + format);
+                    result.put("responseCode", "21"); // No Action
                     return result;
             }
 
@@ -136,23 +141,27 @@ public class PinpadManager {
                 result.put("format", format);
                 result.put("keyIndex", keyIndex);
                 result.put("encryptionType", encryptionType);
-                Log.d(TAG, "PIN Block created successfully");
+                result.put("responseCode", "00"); // Success
+                result.put("processingCode", "920000"); // Create PIN processing code
+                Log.d(TAG, "PIN Block created successfully for Create PIN operation");
             } else {
                 result.put("success", false);
                 result.put("error", "Failed to create PIN Block");
+                result.put("responseCode", "91"); // Host Down
             }
 
         } catch (Exception e) {
             Log.e(TAG, "Exception during PIN Block creation: " + e.getMessage());
             result.put("success", false);
             result.put("error", "Exception: " + e.getMessage());
+            result.put("responseCode", "91"); // Host Down
         }
 
         return result;
     }
 
     /**
-     * Create PIN Block Format 0 (ISO 9564-1 Format 0)
+     * Create PIN Block Format 0 (ISO 9564-1 Format 0) - Most common format
      */
     private byte[] createPinBlockFormat0(String pin, String cardNumber, int keyIndex, int encryptionType) {
         try {
@@ -160,13 +169,19 @@ public class PinpadManager {
             String pinLength = String.format("%01d", pin.length());
             String pinData = "0" + pinLength + pin;
 
-            // Pad with F to make 16 characters
+            // Pad with F to make 16 characters (8 bytes)
             while (pinData.length() < 16) {
                 pinData += "F";
             }
 
             // Get PAN block (rightmost 12 digits of PAN, excluding check digit, padded with zeros)
-            String panBlock = "0000" + cardNumber.substring(cardNumber.length() - 13, cardNumber.length() - 1);
+            String panBlock = "0000" + cardNumber.substring(Math.max(0, cardNumber.length() - 13), cardNumber.length() - 1);
+            if (panBlock.length() > 16) {
+                panBlock = panBlock.substring(panBlock.length() - 16);
+            }
+            while (panBlock.length() < 16) {
+                panBlock = "0" + panBlock;
+            }
 
             // XOR PIN block with PAN block
             byte[] pinBytes = hexToBytes(pinData);
@@ -177,7 +192,7 @@ public class PinpadManager {
                 xorResult[i] = (byte) (pinBytes[i] ^ panBytes[i]);
             }
 
-            // Encrypt with specified algorithm using encryptByTdk
+            // Encrypt with specified algorithm
             return encryptPinBlock(xorResult, keyIndex, encryptionType);
 
         } catch (Exception e) {
@@ -247,7 +262,13 @@ public class PinpadManager {
             }
 
             // Get PAN block
-            String panBlock = "0000" + cardNumber.substring(cardNumber.length() - 13, cardNumber.length() - 1);
+            String panBlock = "0000" + cardNumber.substring(Math.max(0, cardNumber.length() - 13), cardNumber.length() - 1);
+            if (panBlock.length() > 16) {
+                panBlock = panBlock.substring(panBlock.length() - 16);
+            }
+            while (panBlock.length() < 16) {
+                panBlock = "0" + panBlock;
+            }
 
             // XOR PIN block with PAN block
             byte[] pinBytes = hexToBytes(pinData);
@@ -272,15 +293,15 @@ public class PinpadManager {
     private byte[] encryptPinBlock(byte[] pinBlock, int keyIndex, int encryptionType) {
         try {
             byte[] encryptedBlock = new byte[8];
-            byte[] random = new byte[8]; // For 3DES IV
+            byte[] iv = new byte[8]; // Initialization vector
 
             // Use encryptByTdk method from AidlPinpad
-            int result = pinpad.encryptByTdk(keyIndex, MODE_ENCRYPT, random, pinBlock, encryptedBlock);
+            int result = pinpad.encryptByTdk(keyIndex, MODE_ENCRYPT, iv, pinBlock, encryptedBlock);
 
             if (result == 0) { // Success
                 return encryptedBlock;
             } else {
-                Log.e(TAG, "Encryption failed with code: " + result);
+                Log.e(TAG, "Encryption failed with code: " + result + " - " + getErrorDescription(result));
                 return null;
             }
 
@@ -301,6 +322,7 @@ public class PinpadManager {
             if (pinpad == null) {
                 result.put("success", false);
                 result.put("error", "Pinpad not initialized");
+                result.put("responseCode", "91"); // Host Down
                 return result;
             }
 
@@ -318,19 +340,23 @@ public class PinpadManager {
                     result.put("success", true);
                     result.put("pin", extractedPin);
                     result.put("pinLength", extractedPin.length());
+                    result.put("responseCode", "00"); // Success
                 } else {
                     result.put("success", false);
                     result.put("error", "Failed to extract PIN from block");
+                    result.put("responseCode", "55"); // Incorrect PIN
                 }
             } else {
                 result.put("success", false);
                 result.put("error", "Failed to decrypt PIN Block");
+                result.put("responseCode", "55"); // Incorrect PIN
             }
 
         } catch (Exception e) {
             Log.e(TAG, "Exception during PIN verification: " + e.getMessage());
             result.put("success", false);
             result.put("error", "Exception: " + e.getMessage());
+            result.put("responseCode", "91"); // Host Down
         }
 
         return result;
@@ -350,7 +376,7 @@ public class PinpadManager {
             if (result == 0) { // Success
                 return decryptedBlock;
             } else {
-                Log.e(TAG, "Decryption failed with code: " + result);
+                Log.e(TAG, "Decryption failed with code: " + result + " - " + getErrorDescription(result));
                 return null;
             }
 
@@ -369,7 +395,14 @@ public class PinpadManager {
 
             if (format == PIN_BLOCK_FORMAT_0 || format == PIN_BLOCK_FORMAT_3) {
                 // Need to XOR with PAN block first
-                String panBlock = "0000" + cardNumber.substring(cardNumber.length() - 13, cardNumber.length() - 1);
+                String panBlock = "0000" + cardNumber.substring(Math.max(0, cardNumber.length() - 13), cardNumber.length() - 1);
+                if (panBlock.length() > 16) {
+                    panBlock = panBlock.substring(panBlock.length() - 16);
+                }
+                while (panBlock.length() < 16) {
+                    panBlock = "0" + panBlock;
+                }
+
                 byte[] panBytes = hexToBytes(panBlock);
                 byte[] xorResult = new byte[8];
 
@@ -396,405 +429,7 @@ public class PinpadManager {
     }
 
     /**
-     * Load main key into the pinpad
-     */
-    public boolean loadMainKey(int keyIndex, byte[] keyData, byte[] checkValue) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.loadMainkey(keyIndex, keyData, checkValue);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during key loading: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Load work key into the pinpad
-     */
-    public boolean loadWorkKey(int keyType, int masterKeyId, int workKeyId,
-                               byte[] keyData, byte[] checkValue) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during work key loading: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Load TEK (Terminal Encryption Key) into the pinpad
-     */
-    public boolean loadTEK(int keyIndex, byte[] keyData, byte[] checkValue) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.loadTEK(keyIndex, keyData, checkValue);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during TEK loading: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Load TWK (Terminal Working Key) into the pinpad
-     */
-    public boolean loadTWK(int keyType, int tekKeyId, int workKeyId,
-                           byte[] keyData, byte[] checkValue) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.loadTWK(keyType, tekKeyId, workKeyId, keyData, checkValue);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during TWK loading: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Get key check value
-     */
-    public byte[] getKeyCheckValue(int keyType, int keyIndex) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return null;
-            }
-
-            return pinpad.getKeyCheckValue(keyType, keyIndex);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during key check value retrieval: " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Get key state
-     */
-    public boolean getKeyState(int keyType, int keyIndex) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.getKeyState(keyType, keyIndex);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during key state check: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Delete key from pinpad
-     */
-    public boolean deleteKey(int keyType, int keyIndex, int mode) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.deletePedKey(keyType, keyIndex, mode);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during key deletion: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Get MAC (Message Authentication Code)
-     */
-    public Map<String, Object> getMac(Bundle param) {
-        Map<String, Object> result = new HashMap<>();
-
-        try {
-            if (pinpad == null) {
-                result.put("success", false);
-                result.put("error", "Pinpad not initialized");
-                return result;
-            }
-
-            byte[] mac = new byte[8];
-            int macResult = pinpad.getMac(param, mac);
-
-            if (macResult == 0) {
-                result.put("success", true);
-                result.put("mac", bytesToHex(mac));
-            } else {
-                result.put("success", false);
-                result.put("error", "Failed to get MAC, code: " + macResult);
-            }
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during MAC generation: " + e.getMessage());
-            result.put("success", false);
-            result.put("error", "Exception: " + e.getMessage());
-        }
-
-        return result;
-    }
-
-    /**
-     * Get random number from pinpad
-     */
-    public byte[] getRandom() {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return null;
-            }
-
-            return pinpad.getRandom();
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during random number generation: " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Display text on pinpad
-     */
-    public boolean display(String line1, String line2) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.display(line1, line2);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during display: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Load DUKPT (Derived Unique Key Per Transaction) key
-     */
-    public boolean loadDukptKey(int keyType, int keyIndex, byte[] key, byte[] ksn) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.loadDuKPTkey(keyType, keyIndex, key, ksn);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during DUKPT key loading: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Get DUKPT KSN (Key Serial Number)
-     */
-    public byte[] getDukptKsn(int keyIndex, boolean isIncrease) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return null;
-            }
-
-            return pinpad.getDUKPTKsn(keyIndex, isIncrease);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during DUKPT KSN retrieval: " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Encrypt by DUKPT data key
-     */
-    public Map<String, Object> encryptByDukptDataKey(int keyIndex, byte mode,
-                                                     byte[] data, byte[] iv) {
-        Map<String, Object> result = new HashMap<>();
-
-        try {
-            if (pinpad == null) {
-                result.put("success", false);
-                result.put("error", "Pinpad not initialized");
-                return result;
-            }
-
-            byte[] encryptedData = new byte[data.length];
-            int encryptResult = pinpad.cryptByDukptDataKey(keyIndex, mode, data, iv, encryptedData);
-
-            if (encryptResult == 0) {
-                result.put("success", true);
-                result.put("encryptedData", bytesToHex(encryptedData));
-            } else {
-                result.put("success", false);
-                result.put("error", "Encryption failed, code: " + encryptResult);
-            }
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during DUKPT encryption: " + e.getMessage());
-            result.put("success", false);
-            result.put("error", "Exception: " + e.getMessage());
-        }
-
-        return result;
-    }
-
-    /**
-     * Algorithm calculation
-     */
-    public byte[] algorithmCalculation(int keyIndex, int keyType, byte[] data, byte[] cbcData) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return null;
-            }
-
-            return pinpad.algorithmCal(keyIndex, keyType, data, cbcData);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during algorithm calculation: " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Set PIN keyboard mode
-     */
-    public boolean setPinKeyboardMode(int mode) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            return pinpad.setPinKeyboardMode(mode);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during PIN keyboard mode setting: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Set PIN pad layout
-     */
-    public void setPinPadLayout(byte[] layout) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return;
-            }
-
-            pinpad.setPinPadLayout(layout);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during PIN pad layout setting: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Format card number for PIN Block processing
-     */
-    private String formatCardNumber(String cardNumber) {
-        // Remove any non-numeric characters
-        String cleanCardNumber = cardNumber.replaceAll("[^0-9]", "");
-
-        // Ensure we have at least 13 digits
-        if (cleanCardNumber.length() < 13) {
-            // Pad with zeros on the left
-            while (cleanCardNumber.length() < 13) {
-                cleanCardNumber = "0" + cleanCardNumber;
-            }
-        }
-
-        return cleanCardNumber;
-    }
-
-    /**
-     * Convert byte array to hex string
-     */
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder result = new StringBuilder();
-        for (byte b : bytes) {
-            result.append(String.format("%02X", b));
-        }
-        return result.toString();
-    }
-
-    /**
-     * Convert hex string to byte array
-     */
-    private byte[] hexToBytes(String hex) {
-        int len = hex.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                    + Character.digit(hex.charAt(i + 1), 16));
-        }
-        return data;
-    }
-
-    /**
-     * Close PIN pad - not available in AidlPinpad interface
-     */
-    public void closePinpad() {
-        Log.d(TAG, "Pinpad closed (no actual close method in AidlPinpad)");
-    }
-
-    /**
-     * Get PIN pad status
-     */
-    public Map<String, Object> getPinpadStatus() {
-        Map<String, Object> status = new HashMap<>();
-
-        try {
-            if (pinpad == null) {
-                status.put("available", false);
-                status.put("error", "Pinpad service not available");
-                return status;
-            }
-
-            // Test if pinpad is working by checking a key state
-            boolean keyState = pinpad.getKeyState(KEY_TYPE_PIK, 0);
-            status.put("available", true);
-            status.put("keyState", keyState);
-            status.put("statusText", "Pinpad service available");
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException getting pinpad status: " + e.getMessage());
-            status.put("available", false);
-            status.put("error", "RemoteException: " + e.getMessage());
-        }
-
-        return status;
-    }
-
-    /**
-     * Change PIN (Ganti PIN)
-     * Processing Code: 94000 (based on ISO message from documentation)
+     * Change PIN (Ganti PIN) - Processing Code: 930000
      * @param oldPinBlock Encrypted old PIN block
      * @param newPinBlock Encrypted new PIN block
      * @param cardNumber Card number (PAN)
@@ -854,14 +489,15 @@ public class PinpadManager {
                 return result;
             }
 
-            // Simulate PIN change process (in real implementation, this would communicate with host)
+            // In real implementation, this would communicate with host
             // For now, we'll assume success and return appropriate response
 
             result.put("success", true);
             result.put("message", "PIN changed successfully");
             result.put("responseCode", "00"); // Success
-            result.put("processingCode", "94000"); // Change PIN processing code
+            result.put("processingCode", "930000"); // Change PIN processing code
             result.put("newPinLength", extractedNewPin.length());
+            result.put("pinBlock", newPinBlock); // Return the new PIN block
 
             Log.d(TAG, "PIN change successful for card: " + maskCardNumber(cardNumber));
 
@@ -876,8 +512,7 @@ public class PinpadManager {
     }
 
     /**
-     * PIN Authorization/Verification (Otorisasi PIN)
-     * Processing Code: 94800 (based on ISO message from documentation)
+     * PIN Authorization/Verification (Otorisasi PIN) - Processing Code: 940000
      * @param pinBlock Encrypted PIN block
      * @param cardNumber Card number (PAN)
      * @param amount Transaction amount (optional)
@@ -932,7 +567,7 @@ public class PinpadManager {
             Map<String, Object> authData = new HashMap<>();
             authData.put("cardNumber", maskCardNumber(cardNumber));
             authData.put("pinLength", pinLength);
-            authData.put("processingCode", "94800"); // PIN authorization processing code
+            authData.put("processingCode", "940000"); // PIN authorization processing code
             if (amount != null) {
                 authData.put("amount", amount);
             }
@@ -944,9 +579,10 @@ public class PinpadManager {
             result.put("success", true);
             result.put("message", "PIN authorization successful");
             result.put("responseCode", "00"); // Success
-            result.put("processingCode", "94800");
+            result.put("processingCode", "940000");
             result.put("authorizationData", authData);
             result.put("pinLength", pinLength);
+            result.put("pinBlock", pinBlock); // Return the PIN block used
 
             Log.d(TAG, "PIN authorization successful for card: " + maskCardNumber(cardNumber));
 
@@ -961,8 +597,113 @@ public class PinpadManager {
     }
 
     /**
+     * Load main key into the pinpad
+     */
+    public boolean loadMainKey(int keyIndex, byte[] keyData, byte[] checkValue) {
+        try {
+            if (pinpad == null) {
+                Log.e(TAG, "Pinpad not initialized");
+                return false;
+            }
+
+            return pinpad.loadMainkey(keyIndex, keyData, checkValue);
+
+        } catch (RemoteException e) {
+            Log.e(TAG, "RemoteException during key loading: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Load work key into the pinpad
+     */
+    public boolean loadWorkKey(int keyType, int masterKeyId, int workKeyId,
+                               byte[] keyData, byte[] checkValue) {
+        try {
+            if (pinpad == null) {
+                Log.e(TAG, "Pinpad not initialized");
+                return false;
+            }
+
+            return pinpad.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
+
+        } catch (RemoteException e) {
+            Log.e(TAG, "RemoteException during work key loading: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get key state
+     */
+    public boolean getKeyState(int keyType, int keyIndex) {
+        try {
+            if (pinpad == null) {
+                Log.e(TAG, "Pinpad not initialized");
+                return false;
+            }
+
+            return pinpad.getKeyState(keyType, keyIndex);
+
+        } catch (RemoteException e) {
+            Log.e(TAG, "RemoteException during key state check: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get MAC (Message Authentication Code)
+     */
+    public Map<String, Object> getMac(Bundle param) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            if (pinpad == null) {
+                result.put("success", false);
+                result.put("error", "Pinpad not initialized");
+                return result;
+            }
+
+            byte[] mac = new byte[8];
+            int macResult = pinpad.getMac(param, mac);
+
+            if (macResult == 0) {
+                result.put("success", true);
+                result.put("mac", bytesToHex(mac));
+            } else {
+                result.put("success", false);
+                result.put("error", "Failed to get MAC, code: " + macResult + " - " + getErrorDescription(macResult));
+            }
+
+        } catch (RemoteException e) {
+            Log.e(TAG, "RemoteException during MAC generation: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", "Exception: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * Get random number from pinpad
+     */
+    public byte[] getRandom() {
+        try {
+            if (pinpad == null) {
+                Log.e(TAG, "Pinpad not initialized");
+                return null;
+            }
+
+            return pinpad.getRandom();
+
+        } catch (RemoteException e) {
+            Log.e(TAG, "RemoteException during random number generation: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Get remaining PIN tries (simulation)
-     * In real implementation, this would query the card or host system
      */
     private int getRemainingPinTries(String cardNumber) {
         // Simulate remaining tries - in real implementation,
@@ -970,6 +711,27 @@ public class PinpadManager {
         return 3; // Default remaining tries
     }
 
+    /**
+     * Format card number for PIN Block processing
+     */
+    private String formatCardNumber(String cardNumber) {
+        // Remove any non-numeric characters
+        String cleanCardNumber = cardNumber.replaceAll("[^0-9]", "");
+
+        // Ensure we have at least 13 digits
+        if (cleanCardNumber.length() < 13) {
+            // Pad with zeros on the left
+            while (cleanCardNumber.length() < 13) {
+                cleanCardNumber = "0" + cleanCardNumber;
+            }
+        }
+
+        return cleanCardNumber;
+    }
+
+    /**
+     * Mask card number for logging
+     */
     private String maskCardNumber(String cardNumber) {
         if (cardNumber == null || cardNumber.length() < 4) {
             return "****";
@@ -992,20 +754,56 @@ public class PinpadManager {
     }
 
     /**
-     * Get status text description based on Pinpad error codes
+     * Convert byte array to hex string
      */
-    private String getStatusText(int status) {
-        switch (status) {
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02X", b));
+        }
+        return result.toString();
+    }
+
+    /**
+     * Convert hex string to byte array
+     */
+    private byte[] hexToBytes(String hex) {
+        if (hex == null || hex.isEmpty()) {
+            return new byte[0];
+        }
+
+        // Remove any spaces or separators
+        hex = hex.replaceAll("\\s+", "").replaceAll("-", "");
+
+        int len = hex.length();
+        if (len % 2 != 0) {
+            hex = "0" + hex; // Pad with leading zero if odd length
+            len = hex.length();
+        }
+
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                    + Character.digit(hex.charAt(i + 1), 16));
+        }
+        return data;
+    }
+
+    /**
+     * Get error description based on error code
+     */
+    private String getErrorDescription(int errorCode) {
+        switch (errorCode) {
             case 0:
                 return "Success";
             case AidlErrorCode.Pinpad.ERROR_NODEV:
-                return "No Device Error";
+                return "No Device";
             case AidlErrorCode.Pinpad.ERROR_INPUTTIMES:
                 return "Input Times Error";
             case AidlErrorCode.Pinpad.ERROR_KEYTYPE:
                 return "Key Type Error";
             case AidlErrorCode.Pinpad.ERROR_TIMEOUT:
-                return "Timeout Error";
+                return "Timeout";
             case AidlErrorCode.Pinpad.ERROR_UNKNOWN:
                 return "Unknown Error";
             case AidlErrorCode.Pinpad.ERROR_MAC:
@@ -1019,7 +817,42 @@ public class PinpadManager {
             case AidlErrorCode.Pinpad.ERROR_PINPAD_NO_SUPPORT:
                 return "Pinpad Not Supported";
             default:
-                return "Unknown Status: " + status;
+                return "Unknown Status: " + errorCode;
         }
+    }
+
+    /**
+     * Close PIN pad - not available in AidlPinpad interface
+     */
+    public void closePinpad() {
+        Log.d(TAG, "Pinpad closed (no actual close method in AidlPinpad)");
+    }
+
+    /**
+     * Get PIN pad status
+     */
+    public Map<String, Object> getPinpadStatus() {
+        Map<String, Object> status = new HashMap<>();
+
+        try {
+            if (pinpad == null) {
+                status.put("available", false);
+                status.put("error", "Pinpad service not available");
+                return status;
+            }
+
+            // Test if pinpad is working by checking a key state
+            boolean keyState = pinpad.getKeyState(KEY_TYPE_PIK, 0);
+            status.put("available", true);
+            status.put("keyState", keyState);
+            status.put("statusText", "Pinpad service available");
+
+        } catch (RemoteException e) {
+            Log.e(TAG, "RemoteException getting pinpad status: " + e.getMessage());
+            status.put("available", false);
+            status.put("error", "RemoteException: " + e.getMessage());
+        }
+
+        return status;
     }
 }

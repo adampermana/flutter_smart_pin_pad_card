@@ -137,7 +137,7 @@ class FlutterSmartPinPadCards {
     }
   }
 
-  /// Create a PIN Block
+  /// Create a PIN Block - Used for Create PIN operation (Processing Code 920000)
   /// Parameters:
   /// - pin: User entered PIN (4-12 digits)
   /// - cardNumber: Card number (PAN)
@@ -154,11 +154,20 @@ class FlutterSmartPinPadCards {
     int encryptionType = ENCRYPT_3DES,
   }) async {
     try {
+      // Validate input parameters
+      if (!PinBlockUtil.isValidPin(pin)) {
+        throw CardReaderException('INVALID_PIN', 'PIN must be 4-12 digits');
+      }
+
+      if (cardNumber.isEmpty) {
+        throw CardReaderException('INVALID_CARD_NUMBER', 'Card number cannot be empty');
+      }
+
       final Map<dynamic, dynamic> result = await _channel.invokeMethod(
         'createPinBlock',
         {
           'pin': pin,
-          'cardNumber': cardNumber,
+          'cardNumber': PinBlockUtil.formatCardNumber(cardNumber),
           'format': format,
           'keyIndex': keyIndex,
           'encryptionType': encryptionType,
@@ -188,11 +197,20 @@ class FlutterSmartPinPadCards {
     int encryptionType = ENCRYPT_3DES,
   }) async {
     try {
+      // Validate input parameters
+      if (!PinBlockUtil.isValidHex(pinBlock)) {
+        throw CardReaderException('INVALID_PIN_BLOCK', 'PIN block must be valid hex string');
+      }
+
+      if (cardNumber.isEmpty) {
+        throw CardReaderException('INVALID_CARD_NUMBER', 'Card number cannot be empty');
+      }
+
       final Map<dynamic, dynamic> result = await _channel.invokeMethod(
         'verifyPin',
         {
-          'pinBlock': pinBlock,
-          'cardNumber': cardNumber,
+          'pinBlock': PinBlockUtil.formatPinBlockHex(pinBlock),
+          'cardNumber': PinBlockUtil.formatCardNumber(cardNumber),
           'format': format,
           'keyIndex': keyIndex,
           'encryptionType': encryptionType,
@@ -200,6 +218,141 @@ class FlutterSmartPinPadCards {
       );
 
       return PinVerifyResult.fromMap(Map<String, dynamic>.from(result));
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
+    }
+  }
+
+  /// Change PIN (Ganti PIN) - Processing Code: 930000
+  /// Parameters:
+  /// - oldPinBlock: Encrypted old PIN block (hex string)
+  /// - newPinBlock: Encrypted new PIN block (hex string)
+  /// - cardNumber: Card number (PAN)
+  /// - keyIndex: Key index for encryption/decryption - default is 0
+  /// - encryptionType: Encryption algorithm (0=3DES, 1=AES) - default is 3DES
+  /// Returns a ChangePinResult object if successful
+  /// Throws a CardReaderException if there's an error
+  static Future<ChangePinResult> changePin({
+    required String oldPinBlock,
+    required String newPinBlock,
+    required String cardNumber,
+    int keyIndex = 0,
+    int encryptionType = ENCRYPT_3DES,
+  }) async {
+    try {
+      // Validate input parameters
+      if (!PinBlockUtil.isValidHex(oldPinBlock)) {
+        throw CardReaderException('INVALID_OLD_PIN_BLOCK', 'Old PIN block must be valid hex string');
+      }
+
+      if (!PinBlockUtil.isValidHex(newPinBlock)) {
+        throw CardReaderException('INVALID_NEW_PIN_BLOCK', 'New PIN block must be valid hex string');
+      }
+
+      if (cardNumber.isEmpty) {
+        throw CardReaderException('INVALID_CARD_NUMBER', 'Card number cannot be empty');
+      }
+
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'changePin',
+        {
+          'oldPinBlock': PinBlockUtil.formatPinBlockHex(oldPinBlock),
+          'newPinBlock': PinBlockUtil.formatPinBlockHex(newPinBlock),
+          'cardNumber': PinBlockUtil.formatCardNumber(cardNumber),
+          'keyIndex': keyIndex,
+          'encryptionType': encryptionType,
+        },
+      );
+
+      return ChangePinResult.fromMap(Map<String, dynamic>.from(result));
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
+    }
+  }
+
+  /// PIN Authorization/Verification (Otorisasi PIN) - Processing Code: 940000
+  /// Parameters:
+  /// - pinBlock: Encrypted PIN block (hex string)
+  /// - cardNumber: Card number (PAN)
+  /// - amount: Transaction amount (optional)
+  /// - keyIndex: Key index for decryption - default is 0
+  /// - encryptionType: Encryption algorithm (0=3DES, 1=AES) - default is 3DES
+  /// Returns an AuthorizePinResult object if successful
+  /// Throws a CardReaderException if there's an error
+  static Future<AuthorizePinResult> authorizePin({
+    required String pinBlock,
+    required String cardNumber,
+    int? amount,
+    int keyIndex = 0,
+    int encryptionType = ENCRYPT_3DES,
+  }) async {
+    try {
+      // Validate input parameters
+      if (!PinBlockUtil.isValidHex(pinBlock)) {
+        throw CardReaderException('INVALID_PIN_BLOCK', 'PIN block must be valid hex string');
+      }
+
+      if (cardNumber.isEmpty) {
+        throw CardReaderException('INVALID_CARD_NUMBER', 'Card number cannot be empty');
+      }
+
+      final Map<String, dynamic> parameters = {
+        'pinBlock': PinBlockUtil.formatPinBlockHex(pinBlock),
+        'cardNumber': PinBlockUtil.formatCardNumber(cardNumber),
+        'keyIndex': keyIndex,
+        'encryptionType': encryptionType,
+      };
+
+      if (amount != null) {
+        parameters['amount'] = amount;
+      }
+
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'authorizePin',
+        parameters,
+      );
+
+      return AuthorizePinResult.fromMap(Map<String, dynamic>.from(result));
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
+    }
+  }
+
+  /// Create PIN (Create new PIN) - Processing Code: 920000
+  /// Parameters:
+  /// - newPin: New PIN to be created (4-12 digits)
+  /// - cardNumber: Card number (PAN)
+  /// - keyIndex: Key index for encryption - default is 0
+  /// - encryptionType: Encryption algorithm (0=3DES, 1=AES) - default is 3DES
+  /// Returns a CreatePinResult object if successful
+  /// Throws a CardReaderException if there's an error
+  static Future<CreatePinResult> createPin({
+    required String newPin,
+    required String cardNumber,
+    int keyIndex = 0,
+    int encryptionType = ENCRYPT_3DES,
+  }) async {
+    try {
+      // Validate input parameters
+      if (!PinBlockUtil.isValidPin(newPin)) {
+        throw CardReaderException('INVALID_PIN', 'PIN must be 4-12 digits');
+      }
+
+      if (cardNumber.isEmpty) {
+        throw CardReaderException('INVALID_CARD_NUMBER', 'Card number cannot be empty');
+      }
+
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'createPin',
+        {
+          'newPin': newPin,
+          'cardNumber': PinBlockUtil.formatCardNumber(cardNumber),
+          'keyIndex': keyIndex,
+          'encryptionType': encryptionType,
+        },
+      );
+
+      return CreatePinResult.fromMap(Map<String, dynamic>.from(result));
     } on PlatformException catch (e) {
       throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
     }
@@ -218,14 +371,25 @@ class FlutterSmartPinPadCards {
     String? checkValue,
   }) async {
     try {
-      final bool result = await _channel.invokeMethod(
-        'loadMainKey',
-        {
-          'keyIndex': keyIndex,
-          'keyData': keyData,
-          'checkValue': checkValue,
-        },
-      );
+      // Validate input parameters
+      if (!PinBlockUtil.isValidHex(keyData)) {
+        throw CardReaderException('INVALID_KEY_DATA', 'Key data must be valid hex string');
+      }
+
+      if (checkValue != null && !PinBlockUtil.isValidHex(checkValue)) {
+        throw CardReaderException('INVALID_CHECK_VALUE', 'Check value must be valid hex string');
+      }
+
+      final Map<String, dynamic> parameters = {
+        'keyIndex': keyIndex,
+        'keyData': PinBlockUtil.formatPinBlockHex(keyData),
+      };
+
+      if (checkValue != null) {
+        parameters['checkValue'] = PinBlockUtil.formatPinBlockHex(checkValue);
+      }
+
+      final bool result = await _channel.invokeMethod('loadMainKey', parameters);
       return result;
     } on PlatformException catch (e) {
       throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
@@ -249,16 +413,27 @@ class FlutterSmartPinPadCards {
     String? checkValue,
   }) async {
     try {
-      final bool result = await _channel.invokeMethod(
-        'loadWorkKey',
-        {
-          'keyType': keyType,
-          'masterKeyId': masterKeyId,
-          'workKeyId': workKeyId,
-          'keyData': keyData,
-          'checkValue': checkValue,
-        },
-      );
+      // Validate input parameters
+      if (!PinBlockUtil.isValidHex(keyData)) {
+        throw CardReaderException('INVALID_KEY_DATA', 'Key data must be valid hex string');
+      }
+
+      if (checkValue != null && !PinBlockUtil.isValidHex(checkValue)) {
+        throw CardReaderException('INVALID_CHECK_VALUE', 'Check value must be valid hex string');
+      }
+
+      final Map<String, dynamic> parameters = {
+        'keyType': keyType,
+        'masterKeyId': masterKeyId,
+        'workKeyId': workKeyId,
+        'keyData': PinBlockUtil.formatPinBlockHex(keyData),
+      };
+
+      if (checkValue != null) {
+        parameters['checkValue'] = PinBlockUtil.formatPinBlockHex(checkValue);
+      }
+
+      final bool result = await _channel.invokeMethod('loadWorkKey', parameters);
       return result;
     } on PlatformException catch (e) {
       throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
@@ -321,105 +496,6 @@ class FlutterSmartPinPadCards {
     }
   }
 
-  /// Change PIN (Ganti PIN)
-  /// Parameters:
-  /// - oldPinBlock: Encrypted old PIN block (hex string)
-  /// - newPinBlock: Encrypted new PIN block (hex string)
-  /// - cardNumber: Card number (PAN)
-  /// - keyIndex: Key index for encryption/decryption - default is 0
-  /// - encryptionType: Encryption algorithm (0=3DES, 1=AES) - default is 3DES
-  /// Returns a ChangePinResult object if successful
-  /// Throws a CardReaderException if there's an error
-  static Future<ChangePinResult> changePin({
-    required String oldPinBlock,
-    required String newPinBlock,
-    required String cardNumber,
-    int keyIndex = 0,
-    int encryptionType = ENCRYPT_3DES,
-  }) async {
-    try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
-        'changePin',
-        {
-          'oldPinBlock': oldPinBlock,
-          'newPinBlock': newPinBlock,
-          'cardNumber': cardNumber,
-          'keyIndex': keyIndex,
-          'encryptionType': encryptionType,
-        },
-      );
-
-      return ChangePinResult.fromMap(Map<String, dynamic>.from(result));
-    } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
-    }
-  }
-
-  /// PIN Authorization/Verification (Otorisasi PIN)
-  /// Parameters:
-  /// - pinBlock: Encrypted PIN block (hex string)
-  /// - cardNumber: Card number (PAN)
-  /// - amount: Transaction amount (optional)
-  /// - keyIndex: Key index for decryption - default is 0
-  /// - encryptionType: Encryption algorithm (0=3DES, 1=AES) - default is 3DES
-  /// Returns an AuthorizePinResult object if successful
-  /// Throws a CardReaderException if there's an error
-  static Future<AuthorizePinResult> authorizePin({
-    required String pinBlock,
-    required String cardNumber,
-    int? amount,
-    int keyIndex = 0,
-    int encryptionType = ENCRYPT_3DES,
-  }) async {
-    try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
-        'authorizePin',
-        {
-          'pinBlock': pinBlock,
-          'cardNumber': cardNumber,
-          'amount': amount,
-          'keyIndex': keyIndex,
-          'encryptionType': encryptionType,
-        },
-      );
-
-      return AuthorizePinResult.fromMap(Map<String, dynamic>.from(result));
-    } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
-    }
-  }
-
-  /// Create PIN (Create new PIN)
-  /// Parameters:
-  /// - newPin: New PIN to be created (4-12 digits)
-  /// - cardNumber: Card number (PAN)
-  /// - keyIndex: Key index for encryption - default is 0
-  /// - encryptionType: Encryption algorithm (0=3DES, 1=AES) - default is 3DES
-  /// Returns a CreatePinResult object if successful
-  /// Throws a CardReaderException if there's an error
-  static Future<CreatePinResult> createPin({
-    required String newPin,
-    required String cardNumber,
-    int keyIndex = 0,
-    int encryptionType = ENCRYPT_3DES,
-  }) async {
-    try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
-        'createPin',
-        {
-          'newPin': newPin,
-          'cardNumber': cardNumber,
-          'keyIndex': keyIndex,
-          'encryptionType': encryptionType,
-        },
-      );
-
-      return CreatePinResult.fromMap(Map<String, dynamic>.from(result));
-    } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
-    }
-  }
-
   /// Helper method to process the result from method channel
   /// and convert it to a consistent format
   static Map<String, dynamic> _processResult(Map<dynamic, dynamic> result) {
@@ -454,122 +530,178 @@ class FlutterSmartPinPadCards {
 
     return processedResult;
   }
-}
 
-/// Result class for PIN Block creation
-class PinBlockResult {
-  final bool success;
-  final String? pinBlock;
-  final int? format;
-  final int? keyIndex;
-  final int? encryptionType;
-  final String? error;
+  /// Utility method to create PIN block from PIN and card number
+  /// This is a convenience method that combines PIN block creation with proper formatting
+  static Future<String> createPinBlockForOperation({
+    required String pin,
+    required String cardNumber,
+    required PinOperationType operationType,
+    int format = PIN_BLOCK_FORMAT_0,
+    int keyIndex = 0,
+    int encryptionType = ENCRYPT_3DES,
+  }) async {
+    try {
+      final result = await createPinBlock(
+        pin: pin,
+        cardNumber: cardNumber,
+        format: format,
+        keyIndex: keyIndex,
+        encryptionType: encryptionType,
+      );
 
-  PinBlockResult({
-    required this.success,
-    this.pinBlock,
-    this.format,
-    this.keyIndex,
-    this.encryptionType,
-    this.error,
-  });
+      if (!result.isSuccessful) {
+        throw CardReaderException(
+          result.responseCode ?? 'UNKNOWN_ERROR',
+          result.error ?? 'Failed to create PIN block',
+        );
+      }
 
-  factory PinBlockResult.fromMap(Map<String, dynamic> map) {
-    return PinBlockResult(
-      success: map['success'] ?? false,
-      pinBlock: map['pinBlock'],
-      format: map['format'],
-      keyIndex: map['keyIndex'],
-      encryptionType: map['encryptionType'],
-      error: map['error'],
-    );
+      return result.pinBlock ?? '';
+    } catch (e) {
+      if (e is CardReaderException) {
+        rethrow;
+      }
+      throw CardReaderException('PIN_BLOCK_ERROR', 'Error creating PIN block: $e');
+    }
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'success': success,
-      'pinBlock': pinBlock,
-      'format': format,
-      'keyIndex': keyIndex,
-      'encryptionType': encryptionType,
-      'error': error,
-    };
-  }
+  /// Utility method to perform complete PIN operation workflow
+  /// This method handles the entire PIN operation process including PIN block creation
+  static Future<Map<String, dynamic>> performPinOperation({
+    required PinOperationType operationType,
+    required String cardNumber,
+    String? currentPin,
+    String? newPin,
+    int? amount,
+    int format = PIN_BLOCK_FORMAT_0,
+    int keyIndex = 0,
+    int encryptionType = ENCRYPT_3DES,
+  }) async {
+    try {
+      switch (operationType) {
+        case PinOperationType.createPin:
+          if (newPin == null) {
+            throw CardReaderException('MISSING_PIN', 'New PIN is required for create operation');
+          }
 
-  @override
-  String toString() {
-    return 'PinBlockResult{success: $success, pinBlock: $pinBlock, format: $format, keyIndex: $keyIndex, encryptionType: $encryptionType, error: $error}';
-  }
-}
+          final result = await createPin(
+            newPin: newPin,
+            cardNumber: cardNumber,
+            keyIndex: keyIndex,
+            encryptionType: encryptionType,
+          );
 
-/// Result class for PIN verification
-class PinVerifyResult {
-  final bool success;
-  final String? pin;
-  final int? pinLength;
-  final String? error;
+          return {
+            'success': result.isSuccessful,
+            'operationType': operationType.description,
+            'processingCode': operationType.processingCode,
+            'responseCode': result.responseCode,
+            'message': result.detailedMessage,
+            'pinBlock': result.pinBlock,
+            'error': result.error,
+          };
 
-  PinVerifyResult({
-    required this.success,
-    this.pin,
-    this.pinLength,
-    this.error,
-  });
+        case PinOperationType.changePin:
+          if (currentPin == null || newPin == null) {
+            throw CardReaderException('MISSING_PIN', 'Both current and new PIN are required for change operation');
+          }
 
-  factory PinVerifyResult.fromMap(Map<String, dynamic> map) {
-    return PinVerifyResult(
-      success: map['success'] ?? false,
-      pin: map['pin'],
-      pinLength: map['pinLength'],
-      error: map['error'],
-    );
-  }
+          // Create PIN blocks for both old and new PINs
+          final oldPinBlockResult = await createPinBlock(
+            pin: currentPin,
+            cardNumber: cardNumber,
+            format: format,
+            keyIndex: keyIndex,
+            encryptionType: encryptionType,
+          );
 
-  Map<String, dynamic> toMap() {
-    return {
-      'success': success,
-      'pin': pin,
-      'pinLength': pinLength,
-      'error': error,
-    };
-  }
+          if (!oldPinBlockResult.isSuccessful) {
+            throw CardReaderException(
+              oldPinBlockResult.responseCode ?? 'PIN_BLOCK_ERROR',
+              'Failed to create old PIN block: ${oldPinBlockResult.error}',
+            );
+          }
 
-  @override
-  String toString() {
-    return 'PinVerifyResult{success: $success, pin: $pin, pinLength: $pinLength, error: $error}';
-  }
-}
+          final newPinBlockResult = await createPinBlock(
+            pin: newPin,
+            cardNumber: cardNumber,
+            format: format,
+            keyIndex: keyIndex,
+            encryptionType: encryptionType,
+          );
 
-/// Result class for MAC operations
-class MacResult {
-  final bool success;
-  final String? mac;
-  final String? error;
+          if (!newPinBlockResult.isSuccessful) {
+            throw CardReaderException(
+              newPinBlockResult.responseCode ?? 'PIN_BLOCK_ERROR',
+              'Failed to create new PIN block: ${newPinBlockResult.error}',
+            );
+          }
 
-  MacResult({
-    required this.success,
-    this.mac,
-    this.error,
-  });
+          final result = await changePin(
+            oldPinBlock: oldPinBlockResult.pinBlock!,
+            newPinBlock: newPinBlockResult.pinBlock!,
+            cardNumber: cardNumber,
+            keyIndex: keyIndex,
+            encryptionType: encryptionType,
+          );
 
-  factory MacResult.fromMap(Map<String, dynamic> map) {
-    return MacResult(
-      success: map['success'] ?? false,
-      mac: map['mac'],
-      error: map['error'],
-    );
-  }
+          return {
+            'success': result.isSuccessful,
+            'operationType': operationType.description,
+            'processingCode': operationType.processingCode,
+            'responseCode': result.responseCode,
+            'message': result.detailedMessage,
+            'pinBlock': result.pinBlock,
+            'error': result.error,
+          };
 
-  Map<String, dynamic> toMap() {
-    return {
-      'success': success,
-      'mac': mac,
-      'error': error,
-    };
-  }
+        case PinOperationType.authorization:
+          if (currentPin == null) {
+            throw CardReaderException('MISSING_PIN', 'PIN is required for authorization operation');
+          }
 
-  @override
-  String toString() {
-    return 'MacResult{success: $success, mac: $mac, error: $error}';
+          // Create PIN block for authorization
+          final pinBlockResult = await createPinBlock(
+            pin: currentPin,
+            cardNumber: cardNumber,
+            format: format,
+            keyIndex: keyIndex,
+            encryptionType: encryptionType,
+          );
+
+          if (!pinBlockResult.isSuccessful) {
+            throw CardReaderException(
+              pinBlockResult.responseCode ?? 'PIN_BLOCK_ERROR',
+              'Failed to create PIN block: ${pinBlockResult.error}',
+            );
+          }
+
+          final result = await authorizePin(
+            pinBlock: pinBlockResult.pinBlock!,
+            cardNumber: cardNumber,
+            amount: amount,
+            keyIndex: keyIndex,
+            encryptionType: encryptionType,
+          );
+
+          return {
+            'success': result.isAuthorized,
+            'operationType': operationType.description,
+            'processingCode': operationType.processingCode,
+            'responseCode': result.responseCode,
+            'message': result.detailedMessage,
+            'pinBlock': result.pinBlock,
+            'authorizationData': result.authorizationData,
+            'remainingTries': result.remainingTries,
+            'error': result.error,
+          };
+      }
+    } catch (e) {
+      if (e is CardReaderException) {
+        rethrow;
+      }
+      throw CardReaderException('OPERATION_ERROR', 'Error performing PIN operation: $e');
+    }
   }
 }
