@@ -226,7 +226,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                     } else {
                         String error = (cardData != null) ?
                                 cardData.getEreturnType().toString() : "Unknown error";
-                        sendError("READ_ERROR", "Failed to read card: " + error);
+//                        sendError("READ_ERROR", "Failed to read card: " + error); // Hide Dulu guys
                     }
                 });
             }
