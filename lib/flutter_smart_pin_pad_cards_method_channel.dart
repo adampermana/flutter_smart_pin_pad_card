@@ -62,9 +62,8 @@ class MethodChannelFlutterSmartPinPadCards extends FlutterSmartPinPadCardsPlatfo
   }
 
   @override
-  Future<bool> initPinpad() async {
+  Future<void> initPinpad() async {
     await methodChannel.invokeMethod('initPinpad');
-    return false;
   }
 
   @override

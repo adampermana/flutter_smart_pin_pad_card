@@ -57,7 +57,7 @@ abstract class FlutterSmartPinPadCardsPlatform extends PlatformInterface {
     throw UnimplementedError('createPinBlock() has not been implemented.');
   }
 
-  Future<bool> initPinpad() {
+  Future<void> initPinpad() {
     throw UnimplementedError('initPinpad() has not been implemented.');
   }
 
