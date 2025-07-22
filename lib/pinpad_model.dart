@@ -71,73 +71,121 @@ class CardData {
 /// Result class for PIN Block creation
 class PinBlockResult {
   final bool success;
-  final String? pinBlock;
-  final int? format;
-  final int? keyIndex;
-  final int? encryptionType;
   final String? responseCode;
+  final String? pinBlock;
+  final String? plainPinBlock;
+  final int? format;
+  final String? formatDescription;
+  final int? pinLength;
+  final String? cardNumber;
+  final int? encryptionType;
+  final String? encryptionMethod;
+  final String? fillerChar;
+  final int? timestamp;
   final String? processingCode;
+  final String? operation;
+  final String? message;
   final String? error;
+  final bool? isAuthorized;
+  final int? remainingTries;
+  final Map<String, dynamic>? authorizationData;
+  final String? oldPinBlock;
+  final String? newPinBlock;
+  final int? oldPinLength;
+  final int? newPinLength;
+  final int? keyIndex;
 
   PinBlockResult({
     required this.success,
-    this.pinBlock,
-    this.format,
-    this.keyIndex,
-    this.encryptionType,
     this.responseCode,
+    this.pinBlock,
+    this.plainPinBlock,
+    this.format,
+    this.formatDescription,
+    this.pinLength,
+    this.cardNumber,
+    this.encryptionType,
+    this.encryptionMethod,
+    this.fillerChar,
+    this.timestamp,
     this.processingCode,
+    this.operation,
+    this.message,
     this.error,
+    this.isAuthorized,
+    this.remainingTries,
+    this.authorizationData,
+    this.oldPinBlock,
+    this.newPinBlock,
+    this.oldPinLength,
+    this.newPinLength,
+    this.keyIndex,
   });
 
   factory PinBlockResult.fromMap(Map<String, dynamic> map) {
     return PinBlockResult(
       success: map['success'] ?? false,
-      pinBlock: map['pinBlock'],
-      format: map['format'],
-      keyIndex: map['keyIndex'],
-      encryptionType: map['encryptionType'],
       responseCode: map['responseCode'],
+      pinBlock: map['pinBlock'],
+      plainPinBlock: map['plainPinBlock'],
+      format: map['format'],
+      formatDescription: map['formatDescription'],
+      pinLength: map['pinLength'],
+      cardNumber: map['cardNumber'],
+      encryptionType: map['encryptionType'],
+      encryptionMethod: map['encryptionMethod'],
+      fillerChar: map['fillerChar'],
+      timestamp: map['timestamp'],
       processingCode: map['processingCode'],
+      operation: map['operation'],
+      message: map['message'],
       error: map['error'],
+      isAuthorized: map['isAuthorized'],
+      remainingTries: map['remainingTries'],
+      authorizationData: map['authorizationData'] != null
+          ? Map<String, dynamic>.from(map['authorizationData'])
+          : null,
+      oldPinBlock: map['oldPinBlock'],
+      newPinBlock: map['newPinBlock'],
+      oldPinLength: map['oldPinLength'],
+      newPinLength: map['newPinLength'],
+      keyIndex: map['keyIndex'],
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'success': success,
-      'pinBlock': pinBlock,
-      'format': format,
-      'keyIndex': keyIndex,
-      'encryptionType': encryptionType,
       'responseCode': responseCode,
+      'pinBlock': pinBlock,
+      'plainPinBlock': plainPinBlock,
+      'format': format,
+      'formatDescription': formatDescription,
+      'pinLength': pinLength,
+      'cardNumber': cardNumber,
+      'encryptionType': encryptionType,
+      'encryptionMethod': encryptionMethod,
+      'fillerChar': fillerChar,
+      'timestamp': timestamp,
       'processingCode': processingCode,
+      'operation': operation,
+      'message': message,
       'error': error,
+      'isAuthorized': isAuthorized,
+      'remainingTries': remainingTries,
+      'authorizationData': authorizationData,
+      'oldPinBlock': oldPinBlock,
+      'newPinBlock': newPinBlock,
+      'oldPinLength': oldPinLength,
+      'newPinLength': newPinLength,
+      'keyIndex': keyIndex,
     };
-  }
-
-  /// Check if the operation was successful based on response code
-  bool get isSuccessful => success && responseCode == '00';
-
-  /// Get response message based on response code
-  String get responseMessage {
-    switch (responseCode) {
-      case '00':
-        return 'Success';
-      case '21':
-        return 'No Action';
-      case '55':
-        return 'Incorrect PIN';
-      case '91':
-        return 'Host Down';
-      default:
-        return error ?? 'Unknown error';
-    }
   }
 
   @override
   String toString() {
-    return 'PinBlockResult{success: $success, pinBlock: $pinBlock, format: $format, keyIndex: $keyIndex, encryptionType: $encryptionType, responseCode: $responseCode, processingCode: $processingCode, error: $error}';
+    return 'PinBlockResult{success: $success, responseCode: $responseCode, '
+        'pinBlock: $pinBlock, format: $format, operation: $operation}';
   }
 }
 

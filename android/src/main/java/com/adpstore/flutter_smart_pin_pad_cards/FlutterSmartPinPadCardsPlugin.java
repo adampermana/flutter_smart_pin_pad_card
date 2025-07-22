@@ -33,7 +33,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
     private boolean isCardReading = false;
     private ICardReader cardReader;
     private Handler mainHandler;
-    private DynamicPinBlockManager pinpadManager;
+    private DynamicPinBlockManager dynamicPinBlockManager;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPlugin.FlutterPluginBinding flutterPluginBinding) {
@@ -46,7 +46,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         boolean bindResult = DeviceServiceManagers.getInstance().bindDeviceService(context);
         Log.d(TAG, "Device service bind result: " + bindResult);
 
-        // Initialize EMV service, Card Reader, and Pinpad Manager
+        // Initialize services
         initializeServices();
     }
 
@@ -68,12 +68,13 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 Log.d(TAG, "Card Reader initialized successfully");
             }
 
-            // Initialize Pinpad Manager
-            pinpadManager = DynamicPinBlockManager.getInstance();
-            if (pinpadManager != null) {
-                Log.d(TAG, "Pinpad initialized: ");
+            // Initialize Dynamic Pinpad Manager
+            dynamicPinBlockManager = DynamicPinBlockManager.getInstance();
+            if (dynamicPinBlockManager != null) {
+                boolean pinpadInit = dynamicPinBlockManager.initPinpad();
+                Log.d(TAG, "Dynamic Pinpad initialized: " + pinpadInit);
             } else {
-                Log.e(TAG, "Pinpad Manager initialization failed");
+                Log.e(TAG, "Dynamic Pinpad Manager initialization failed");
             }
 
         } catch (Exception e) {
@@ -88,6 +89,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 result.success("Android " + android.os.Build.VERSION.RELEASE);
                 break;
 
+            // Card reading methods
             case "startSwipeCardReading":
                 if (isCardReading) {
                     result.error("ALREADY_READING", "Card reader is already active", null);
@@ -112,7 +114,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleStopCardReading(result);
                 break;
 
-            // PIN Block methods
+            // Dynamic PIN Block methods
             case "createDynamicPinBlock":
                 handleCreateDynamicPinBlock(call, result);
                 break;
@@ -129,6 +131,16 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleAuthorizePinDynamic(call, result);
                 break;
 
+            case "testAllPinBlockFormats":
+                handleTestAllPinBlockFormats(call, result);
+                break;
+
+            // Legacy PIN Block methods for backward compatibility
+            case "createPinBlock":
+                handleLegacyCreatePinBlock(call, result);
+                break;
+
+            // Pinpad management methods
             case "initPinpad":
                 handleInitPinpad(result);
                 break;
@@ -166,8 +178,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    // ... existing card reading methods remain the same ...
-
+    // Card reading methods (existing implementation)
     private void handleStartCardReading(MethodCall call, final Result result) {
         if (cardReader == null) {
             result.error("INIT_ERROR", "Card reader not initialized", null);
@@ -190,7 +201,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                     if (cardData != null && cardData.getEreturnType() == CardData.EReturnType.OK) {
                         Map<String, Object> resultMap = new HashMap<>();
 
-                        // Pastikan data kartu dimasukkan ke map
                         resultMap.put("cardType", cardData.getEcardType().toString());
                         resultMap.put("pan", cardData.getPan());
                         resultMap.put("expiryDate", cardData.getExpiryDate());
@@ -225,33 +235,19 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             public void onNotification(CardData.EReturnType eReturnType) {
                 switch (eReturnType) {
                     case RF_MULTI_CARD:
-                        mainHandler.post(() -> {
-                            sendError("MULTI_CARD", "Multiple RF cards detected");
-                        });
+                        mainHandler.post(() -> sendError("MULTI_CARD", "Multiple RF cards detected"));
                         break;
-
                     case OPEN_MAG_ERR:
-                        mainHandler.post(() -> {
-                            sendError("MAG_ERROR", "Failed to open magnetic card reader");
-                        });
+                        mainHandler.post(() -> sendError("MAG_ERROR", "Failed to open magnetic card reader"));
                         break;
-
                     case OPEN_IC_ERR:
-                        mainHandler.post(() -> {
-                            sendError("IC_ERROR", "Failed to open IC card reader");
-                        });
+                        mainHandler.post(() -> sendError("IC_ERROR", "Failed to open IC card reader"));
                         break;
-
                     case OPEN_RF_ERR:
-                        mainHandler.post(() -> {
-                            sendError("RF_ERROR", "Failed to open RF card reader");
-                        });
+                        mainHandler.post(() -> sendError("RF_ERROR", "Failed to open RF card reader"));
                         break;
-
                     default:
-                        mainHandler.post(() -> {
-                            sendError("UNKNOWN_ERROR", "Unknown error occurred: " + eReturnType.toString());
-                        });
+                        mainHandler.post(() -> sendError("UNKNOWN_ERROR", "Unknown error occurred: " + eReturnType.toString()));
                         break;
                 }
             }
@@ -348,13 +344,51 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    /**
-     * Handle dynamic PIN block creation
-     */
+    // Legacy PIN Block method for backward compatibility
+    private void handleLegacyCreatePinBlock(MethodCall call, Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            String pin = (String) arguments.get("pin");
+            String cardNumber = (String) arguments.get("cardNumber");
+            Integer format = (Integer) arguments.get("format");
+            Integer keyIndex = (Integer) arguments.get("keyIndex");
+            Integer encryptionType = (Integer) arguments.get("encryptionType");
+
+            // Validate required parameters
+            if (pin == null || cardNumber == null) {
+                result.error("INVALID_PARAMS", "PIN and card number are required", null);
+                return;
+            }
+
+            // Set defaults
+            if (format == null) format = DynamicPinBlockManager.PIN_BLOCK_FORMAT_0;
+            if (keyIndex == null) keyIndex = 0;
+            if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
+
+            // Try legacy method first
+            Map<String, Object> legacyResult = dynamicPinBlockManager.createPinBlock(
+                    pin, cardNumber, format, keyIndex, encryptionType);
+
+            result.success(legacyResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleLegacyCreatePinBlock: " + e.getMessage());
+            result.error("LEGACY_PINBLOCK_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    // Dynamic PIN Block methods
     private void handleCreateDynamicPinBlock(MethodCall call, Result result) {
         try {
-            // Initialize dynamic PIN block manager if needed
-            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
 
             Map<String, Object> arguments = call.arguments();
             String pin = (String) arguments.get("pin");
@@ -378,7 +412,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             if (fillerChar == null) fillerChar = "F";
             if (useHardwareEncryption == null) useHardwareEncryption = true;
 
-            Map<String, Object> pinBlockResult = dynamicManager.createDynamicPinBlock(
+            Map<String, Object> pinBlockResult = dynamicPinBlockManager.createDynamicPinBlock(
                     pin, cardNumber, format, encryptionKey, encryptionType, fillerChar, useHardwareEncryption);
 
             result.success(pinBlockResult);
@@ -389,12 +423,12 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    /**
-     * Handle Create PIN operation (Processing Code: 920000)
-     */
     private void handleCreatePinDynamic(MethodCall call, Result result) {
         try {
-            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
 
             Map<String, Object> arguments = call.arguments();
             String newPin = (String) arguments.get("newPin");
@@ -416,7 +450,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
             if (useHardwareEncryption == null) useHardwareEncryption = true;
 
-            Map<String, Object> createPinResult = dynamicManager.createPin(
+            Map<String, Object> createPinResult = dynamicPinBlockManager.createPin(
                     newPin, cardNumber, format, encryptionKey, encryptionType, useHardwareEncryption);
 
             result.success(createPinResult);
@@ -427,12 +461,12 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    /**
-     * Handle Change PIN operation (Processing Code: 930000)
-     */
     private void handleChangePinDynamic(MethodCall call, Result result) {
         try {
-            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
 
             Map<String, Object> arguments = call.arguments();
             String currentPin = (String) arguments.get("currentPin");
@@ -455,7 +489,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
             if (useHardwareEncryption == null) useHardwareEncryption = true;
 
-            Map<String, Object> changePinResult = dynamicManager.changePin(
+            Map<String, Object> changePinResult = dynamicPinBlockManager.changePin(
                     currentPin, newPin, cardNumber, format, encryptionKey, encryptionType, useHardwareEncryption);
 
             result.success(changePinResult);
@@ -466,12 +500,12 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    /**
-     * Handle PIN Authorization operation (Processing Code: 940000)
-     */
     private void handleAuthorizePinDynamic(MethodCall call, Result result) {
         try {
-            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
 
             Map<String, Object> arguments = call.arguments();
             String pin = (String) arguments.get("pin");
@@ -504,7 +538,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
             if (useHardwareEncryption == null) useHardwareEncryption = true;
 
-            Map<String, Object> authorizePinResult = dynamicManager.authorizePin(
+            Map<String, Object> authorizePinResult = dynamicPinBlockManager.authorizePin(
                     pin, cardNumber, transactionAmount, format, encryptionKey, encryptionType, useHardwareEncryption);
 
             result.success(authorizePinResult);
@@ -515,14 +549,83 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    private void handleGetPinpadStatus(Result result) {
+    private void handleTestAllPinBlockFormats(MethodCall call, Result result) {
         try {
-            if (pinpadManager == null) {
+            if (dynamicPinBlockManager == null) {
                 result.error("PINPAD_ERROR", "Pinpad manager not available", null);
                 return;
             }
 
-            Map<String, Object> status = pinpadManager.getPinpadStatus();
+            Map<String, Object> arguments = call.arguments();
+            String pin = (String) arguments.get("pin");
+            String cardNumber = (String) arguments.get("cardNumber");
+            String encryptionKey = (String) arguments.get("encryptionKey");
+
+            // Validate required parameters
+            if (pin == null || cardNumber == null) {
+                result.error("INVALID_PARAMS", "PIN and card number are required", null);
+                return;
+            }
+
+            // Set default encryption key if not provided
+            if (encryptionKey == null) {
+                encryptionKey = "404142434445464748494A4B4C4D4E4F";
+            }
+
+            Map<String, Object> testResults = dynamicPinBlockManager.testAllFormats(pin, cardNumber, encryptionKey);
+            result.success(testResults);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleTestAllPinBlockFormats: " + e.getMessage());
+            result.error("TEST_FORMATS_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    // Pinpad management methods
+    private void handleInitPinpad(Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            boolean initResult = dynamicPinBlockManager.initPinpad();
+            if (initResult) {
+                result.success(true);
+            } else {
+                result.error("INIT_ERROR", "Failed to initialize pinpad", null);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleInitPinpad: " + e.getMessage());
+            result.error("INIT_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleClosePinpad(Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            dynamicPinBlockManager.closePinpad();
+            result.success(null);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleClosePinpad: " + e.getMessage());
+            result.error("CLOSE_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleGetPinpadStatus(Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            Map<String, Object> status = dynamicPinBlockManager.getPinpadStatus();
             result.success(status);
 
         } catch (Exception e) {
@@ -531,10 +634,9 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    // Additional PIN block utility methods
     private void handleLoadMainKey(MethodCall call, Result result) {
         try {
-            if (pinpadManager == null) {
+            if (dynamicPinBlockManager == null) {
                 result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
                 return;
             }
@@ -552,7 +654,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             byte[] keyData = hexToBytes(keyDataHex);
             byte[] checkValue = checkValueHex != null ? hexToBytes(checkValueHex) : null;
 
-            boolean loadResult = pinpadManager.loadMainKey(keyIndex, keyData, checkValue);
+            boolean loadResult = dynamicPinBlockManager.loadMainKey(keyIndex, keyData, checkValue);
             result.success(loadResult);
 
         } catch (Exception e) {
@@ -563,7 +665,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
     private void handleLoadWorkKey(MethodCall call, Result result) {
         try {
-            if (pinpadManager == null) {
+            if (dynamicPinBlockManager == null) {
                 result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
                 return;
             }
@@ -583,7 +685,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             byte[] keyData = hexToBytes(keyDataHex);
             byte[] checkValue = checkValueHex != null ? hexToBytes(checkValueHex) : null;
 
-            boolean loadResult = pinpadManager.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
+            boolean loadResult = dynamicPinBlockManager.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
             result.success(loadResult);
 
         } catch (Exception e) {
@@ -594,7 +696,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
     private void handleGetKeyState(MethodCall call, Result result) {
         try {
-            if (pinpadManager == null) {
+            if (dynamicPinBlockManager == null) {
                 result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
                 return;
             }
@@ -608,7 +710,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 return;
             }
 
-            boolean keyState = pinpadManager.getKeyState(keyType, keyIndex);
+            boolean keyState = dynamicPinBlockManager.getKeyState(keyType, keyIndex);
             result.success(keyState);
 
         } catch (Exception e) {
@@ -619,7 +721,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
     private void handleGetMac(MethodCall call, Result result) {
         try {
-            if (pinpadManager == null) {
+            if (dynamicPinBlockManager == null) {
                 result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
                 return;
             }
@@ -639,7 +741,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 }
             }
 
-            Map<String, Object> macResult = pinpadManager.getMac(param);
+            Map<String, Object> macResult = dynamicPinBlockManager.getMac(param);
             if ((Boolean) macResult.get("success")) {
                 result.success(macResult);
             } else {
@@ -654,12 +756,12 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
     private void handleGetRandom(Result result) {
         try {
-            if (pinpadManager == null) {
+            if (dynamicPinBlockManager == null) {
                 result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
                 return;
             }
 
-            byte[] random = pinpadManager.getRandom();
+            byte[] random = dynamicPinBlockManager.getRandom();
             if (random != null) {
                 result.success(bytesToHex(random));
             } else {
@@ -686,6 +788,11 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             return new byte[0];
         }
 
+        hex = hex.replaceAll("\\s+", "").toUpperCase();
+        if (hex.length() % 2 != 0) {
+            hex = "0" + hex;
+        }
+
         int len = hex.length();
         byte[] data = new byte[len / 2];
         for (int i = 0; i < len; i += 2) {
@@ -705,6 +812,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPlugin.FlutterPluginBinding binding) {
+        // Stop card reading if active
         if (isCardReading) {
             if (aidlEmvL2 != null) {
                 try {
@@ -718,15 +826,19 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             }
         }
 
-        if (pinpadManager != null) {
-            pinpadManager.closePinpad();
+        // Close pinpad
+        if (dynamicPinBlockManager != null) {
+            dynamicPinBlockManager.closePinpad();
         }
 
+        // Cleanup
         DeviceServiceManagers.getInstance().unBindDeviceService();
         channel.setMethodCallHandler(null);
+
+        // Clear references
         aidlEmvL2 = null;
         cardReader = null;
-        pinpadManager = null;
+        dynamicPinBlockManager = null;
         context = null;
         mainHandler = null;
     }
