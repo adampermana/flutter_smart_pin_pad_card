@@ -73,4 +73,10 @@ class MethodChannelFlutterSmartPinPadCards extends FlutterSmartPinPadCardsPlatfo
     return false;
   }
 
+  @override
+  Future<void> getPinpadStatus() async {
+    await methodChannel.invokeMethod('getPinpadStatus');
+  }
+
+
 }
