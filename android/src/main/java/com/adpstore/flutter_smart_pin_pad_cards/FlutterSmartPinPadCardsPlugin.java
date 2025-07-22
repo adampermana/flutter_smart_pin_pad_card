@@ -358,6 +358,8 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             Integer format = (Integer) arguments.get("format");
             Integer keyIndex = (Integer) arguments.get("keyIndex");
             Integer encryptionType = (Integer) arguments.get("encryptionType");
+            String encryptionKey = (String) arguments.get("encryptionKey");
+
 
             // Validate required parameters
             if (pin == null || cardNumber == null) {
@@ -372,7 +374,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
             // Try legacy method first
             Map<String, Object> legacyResult = dynamicPinBlockManager.createPinBlock(
-                    pin, cardNumber, format, keyIndex, encryptionType);
+                    pin, cardNumber, format, keyIndex, encryptionType, encryptionKey);
 
             result.success(legacyResult);
 
