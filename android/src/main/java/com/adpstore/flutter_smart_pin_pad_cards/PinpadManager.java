@@ -316,9 +316,6 @@ public class PinpadManager {
 
             return simulated;
 
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException during encryption: " + e.getMessage());
-            return null;
         } catch (Exception e) {
             Log.e(TAG, "General exception during encryption: " + e.getMessage());
             return null;
