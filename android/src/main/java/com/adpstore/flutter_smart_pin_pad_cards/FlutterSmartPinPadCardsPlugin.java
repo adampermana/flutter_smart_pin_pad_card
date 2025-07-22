@@ -33,7 +33,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
     private boolean isCardReading = false;
     private ICardReader cardReader;
     private Handler mainHandler;
-    private PinpadManager pinpadManager;
+    private DynamicPinBlockManager pinpadManager;
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPlugin.FlutterPluginBinding flutterPluginBinding) {
@@ -69,7 +69,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             }
 
             // Initialize Pinpad Manager
-            pinpadManager = PinpadManager.getInstance();
+            pinpadManager = DynamicPinBlockManager.getInstance();
             if (pinpadManager != null) {
                 boolean pinpadInit = pinpadManager.initPinpad();
                 Log.d(TAG, "Pinpad initialized: " + pinpadInit);
@@ -114,24 +114,20 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 break;
 
             // PIN Block methods
-            case "createPinBlock":
-                handleCreatePinBlock(call, result);
+            case "createDynamicPinBlock":
+                handleCreateDynamicPinBlock(call, result);
                 break;
 
-            case "verifyPin":
-                handleVerifyPin(call, result);
+            case "createPinDynamic":
+                handleCreatePinDynamic(call, result);
                 break;
 
-            case "changePin":
-                handleChangePin(call, result);
+            case "changePinDynamic":
+                handleChangePinDynamic(call, result);
                 break;
 
-            case "authorizePin":
-                handleAuthorizePin(call, result);
-                break;
-
-            case "createPin":
-                handleCreatePin(call, result);
+            case "authorizePinDynamic":
+                handleAuthorizePinDynamic(call, result);
                 break;
 
             case "initPinpad":
@@ -353,239 +349,167 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    // PIN Block related methods
-    private void handleCreatePinBlock(MethodCall call, Result result) {
+    private void handleCreateDynamicPinBlock(MethodCall call, Result result) {
         try {
-            if (pinpadManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
+            // Initialize dynamic PIN block manager if needed
+            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
 
             Map<String, Object> arguments = call.arguments();
             String pin = (String) arguments.get("pin");
             String cardNumber = (String) arguments.get("cardNumber");
             Integer format = (Integer) arguments.get("format");
-            Integer keyIndex = (Integer) arguments.get("keyIndex");
+            String encryptionKey = (String) arguments.get("encryptionKey");
             Integer encryptionType = (Integer) arguments.get("encryptionType");
+            String fillerChar = (String) arguments.get("fillerChar");
+            Boolean useHardwareEncryption = (Boolean) arguments.get("useHardwareEncryption");
 
-            // Validate parameters
+            // Validate required parameters
             if (pin == null || cardNumber == null) {
                 result.error("INVALID_PARAMS", "PIN and card number are required", null);
                 return;
             }
 
-            // Set default values if not provided
-            if (format == null) format = PinpadManager.PIN_BLOCK_FORMAT_0;
-            if (keyIndex == null) keyIndex = 0;
-            if (encryptionType == null) encryptionType = PinpadManager.ENCRYPT_3DES;
+            // Set defaults
+            if (format == null) format = DynamicPinBlockManager.PIN_BLOCK_FORMAT_0;
+            if (encryptionKey == null) encryptionKey = "404142434445464748494A4B4C4D4E4F";
+            if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
+            if (fillerChar == null) fillerChar = "F";
+            if (useHardwareEncryption == null) useHardwareEncryption = true;
 
-            Map<String, Object> pinBlockResult = pinpadManager.createPinBlock(
-                    pin, cardNumber, format, keyIndex, encryptionType);
+            Map<String, Object> pinBlockResult = dynamicManager.createDynamicPinBlock(
+                    pin, cardNumber, format, encryptionKey, encryptionType, fillerChar, useHardwareEncryption);
 
-            if ((Boolean) pinBlockResult.get("success")) {
-                result.success(pinBlockResult);
-            } else {
-                result.error("PINBLOCK_ERROR",
-                        (String) pinBlockResult.get("error"),
-                        pinBlockResult);
-            }
+            result.success(pinBlockResult);
 
         } catch (Exception e) {
-            Log.e(TAG, "Exception in handleCreatePinBlock: " + e.getMessage());
-            result.error("PINBLOCK_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
-
-    private void handleVerifyPin(MethodCall call, Result result) {
-        try {
-            if (pinpadManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
-
-            Map<String, Object> arguments = call.arguments();
-            String pinBlock = (String) arguments.get("pinBlock");
-            String cardNumber = (String) arguments.get("cardNumber");
-            Integer format = (Integer) arguments.get("format");
-            Integer keyIndex = (Integer) arguments.get("keyIndex");
-            Integer encryptionType = (Integer) arguments.get("encryptionType");
-
-            // Validate parameters
-            if (pinBlock == null || cardNumber == null) {
-                result.error("INVALID_PARAMS", "PIN block and card number are required", null);
-                return;
-            }
-
-            // Set default values if not provided
-            if (format == null) format = PinpadManager.PIN_BLOCK_FORMAT_0;
-            if (keyIndex == null) keyIndex = 0;
-            if (encryptionType == null) encryptionType = PinpadManager.ENCRYPT_3DES;
-
-            Map<String, Object> verifyResult = pinpadManager.verifyPin(
-                    pinBlock, cardNumber, format, keyIndex, encryptionType);
-
-            if ((Boolean) verifyResult.get("success")) {
-                result.success(verifyResult);
-            } else {
-                result.error("VERIFY_ERROR",
-                        (String) verifyResult.get("error"),
-                        verifyResult);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleVerifyPin: " + e.getMessage());
-            result.error("VERIFY_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
-
-    /**
-     * Handle Change PIN operation (Processing Code: 930000)
-     */
-    private void handleChangePin(MethodCall call, Result result) {
-        try {
-            if (pinpadManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
-
-            Map<String, Object> arguments = call.arguments();
-            String oldPinBlock = (String) arguments.get("oldPinBlock");
-            String newPinBlock = (String) arguments.get("newPinBlock");
-            String cardNumber = (String) arguments.get("cardNumber");
-            Integer keyIndex = (Integer) arguments.get("keyIndex");
-            Integer encryptionType = (Integer) arguments.get("encryptionType");
-
-            // Validate parameters
-            if (oldPinBlock == null || newPinBlock == null || cardNumber == null) {
-                result.error("INVALID_PARAMS", "Old PIN block, new PIN block, and card number are required", null);
-                return;
-            }
-
-            // Set default values if not provided
-            if (keyIndex == null) keyIndex = 0;
-            if (encryptionType == null) encryptionType = PinpadManager.ENCRYPT_3DES;
-
-            Map<String, Object> changePinResult = pinpadManager.changePin(
-                    oldPinBlock, newPinBlock, cardNumber, keyIndex, encryptionType);
-
-            if ((Boolean) changePinResult.get("success")) {
-                result.success(changePinResult);
-            } else {
-                result.error("CHANGE_PIN_ERROR",
-                        (String) changePinResult.get("error"),
-                        changePinResult);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleChangePin: " + e.getMessage());
-            result.error("CHANGE_PIN_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
-
-    /**
-     * Handle PIN Authorization operation (Processing Code: 940000)
-     */
-    private void handleAuthorizePin(MethodCall call, Result result) {
-        try {
-            if (pinpadManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
-
-            Map<String, Object> arguments = call.arguments();
-            String pinBlock = (String) arguments.get("pinBlock");
-            String cardNumber = (String) arguments.get("cardNumber");
-            Object amountObj = arguments.get("amount");
-            Integer keyIndex = (Integer) arguments.get("keyIndex");
-            Integer encryptionType = (Integer) arguments.get("encryptionType");
-
-            // Validate parameters
-            if (pinBlock == null || cardNumber == null) {
-                result.error("INVALID_PARAMS", "PIN block and card number are required", null);
-                return;
-            }
-
-            // Convert amount if provided
-            Long amount = null;
-            if (amountObj != null) {
-                if (amountObj instanceof Integer) {
-                    amount = ((Integer) amountObj).longValue();
-                } else if (amountObj instanceof Long) {
-                    amount = (Long) amountObj;
-                }
-            }
-
-            // Set default values if not provided
-            if (keyIndex == null) keyIndex = 0;
-            if (encryptionType == null) encryptionType = PinpadManager.ENCRYPT_3DES;
-
-            Map<String, Object> authorizePinResult = pinpadManager.authorizePin(
-                    pinBlock, cardNumber, amount, keyIndex, encryptionType);
-
-            if ((Boolean) authorizePinResult.get("success")) {
-                result.success(authorizePinResult);
-            } else {
-                result.error("AUTHORIZE_PIN_ERROR",
-                        (String) authorizePinResult.get("error"),
-                        authorizePinResult);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleAuthorizePin: " + e.getMessage());
-            result.error("AUTHORIZE_PIN_EXCEPTION", "Exception: " + e.getMessage(), null);
+            Log.e(TAG, "Exception in handleCreateDynamicPinBlock: " + e.getMessage());
+            result.error("DYNAMIC_PINBLOCK_EXCEPTION", "Exception: " + e.getMessage(), null);
         }
     }
 
     /**
      * Handle Create PIN operation (Processing Code: 920000)
      */
-    private void handleCreatePin(MethodCall call, Result result) {
+    private void handleCreatePinDynamic(MethodCall call, Result result) {
         try {
-            if (pinpadManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
+            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
 
             Map<String, Object> arguments = call.arguments();
             String newPin = (String) arguments.get("newPin");
             String cardNumber = (String) arguments.get("cardNumber");
-            Integer keyIndex = (Integer) arguments.get("keyIndex");
+            Integer format = (Integer) arguments.get("format");
+            String encryptionKey = (String) arguments.get("encryptionKey");
             Integer encryptionType = (Integer) arguments.get("encryptionType");
+            Boolean useHardwareEncryption = (Boolean) arguments.get("useHardwareEncryption");
 
-            // Validate parameters
+            // Validate required parameters
             if (newPin == null || cardNumber == null) {
                 result.error("INVALID_PARAMS", "New PIN and card number are required", null);
                 return;
             }
 
-            // Set default values if not provided
-            if (keyIndex == null) keyIndex = 0;
-            if (encryptionType == null) encryptionType = PinpadManager.ENCRYPT_3DES;
+            // Set defaults
+            if (format == null) format = DynamicPinBlockManager.PIN_BLOCK_FORMAT_0;
+            if (encryptionKey == null) encryptionKey = "404142434445464748494A4B4C4D4E4F";
+            if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
+            if (useHardwareEncryption == null) useHardwareEncryption = true;
 
-            // Create PIN block for the new PIN
-            Map<String, Object> createPinResult = pinpadManager.createPinBlock(
-                    newPin, cardNumber, PinpadManager.PIN_BLOCK_FORMAT_0, keyIndex, encryptionType);
+            Map<String, Object> createPinResult = dynamicManager.createPin(
+                    newPin, cardNumber, format, encryptionKey, encryptionType, useHardwareEncryption);
 
-            if ((Boolean) createPinResult.get("success")) {
-                // Transform result to match CreatePinResult format
-                Map<String, Object> transformedResult = new HashMap<>();
-                transformedResult.put("success", true);
-                transformedResult.put("message", "PIN created successfully");
-                transformedResult.put("responseCode", createPinResult.get("responseCode"));
-                transformedResult.put("processingCode", createPinResult.get("processingCode"));
-                transformedResult.put("pinBlock", createPinResult.get("pinBlock"));
-                transformedResult.put("pinLength", newPin.length());
-
-                result.success(transformedResult);
-            } else {
-                result.error("CREATE_PIN_ERROR",
-                        (String) createPinResult.get("error"),
-                        createPinResult);
-            }
+            result.success(createPinResult);
 
         } catch (Exception e) {
-            Log.e(TAG, "Exception in handleCreatePin: " + e.getMessage());
-            result.error("CREATE_PIN_EXCEPTION", "Exception: " + e.getMessage(), null);
+            Log.e(TAG, "Exception in handleCreatePinDynamic: " + e.getMessage());
+            result.error("CREATE_PIN_DYNAMIC_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * Handle Change PIN operation (Processing Code: 930000)
+     */
+    private void handleChangePinDynamic(MethodCall call, Result result) {
+        try {
+            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
+
+            Map<String, Object> arguments = call.arguments();
+            String currentPin = (String) arguments.get("currentPin");
+            String newPin = (String) arguments.get("newPin");
+            String cardNumber = (String) arguments.get("cardNumber");
+            Integer format = (Integer) arguments.get("format");
+            String encryptionKey = (String) arguments.get("encryptionKey");
+            Integer encryptionType = (Integer) arguments.get("encryptionType");
+            Boolean useHardwareEncryption = (Boolean) arguments.get("useHardwareEncryption");
+
+            // Validate required parameters
+            if (currentPin == null || newPin == null || cardNumber == null) {
+                result.error("INVALID_PARAMS", "Current PIN, new PIN, and card number are required", null);
+                return;
+            }
+
+            // Set defaults
+            if (format == null) format = DynamicPinBlockManager.PIN_BLOCK_FORMAT_0;
+            if (encryptionKey == null) encryptionKey = "404142434445464748494A4B4C4D4E4F";
+            if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
+            if (useHardwareEncryption == null) useHardwareEncryption = true;
+
+            Map<String, Object> changePinResult = dynamicManager.changePin(
+                    currentPin, newPin, cardNumber, format, encryptionKey, encryptionType, useHardwareEncryption);
+
+            result.success(changePinResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleChangePinDynamic: " + e.getMessage());
+            result.error("CHANGE_PIN_DYNAMIC_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * Handle PIN Authorization operation (Processing Code: 940000)
+     */
+    private void handleAuthorizePinDynamic(MethodCall call, Result result) {
+        try {
+            DynamicPinBlockManager dynamicManager = DynamicPinBlockManager.getInstance();
+
+            Map<String, Object> arguments = call.arguments();
+            String pin = (String) arguments.get("pin");
+            String cardNumber = (String) arguments.get("cardNumber");
+            Object transactionAmountObj = arguments.get("transactionAmount");
+            Integer format = (Integer) arguments.get("format");
+            String encryptionKey = (String) arguments.get("encryptionKey");
+            Integer encryptionType = (Integer) arguments.get("encryptionType");
+            Boolean useHardwareEncryption = (Boolean) arguments.get("useHardwareEncryption");
+
+            // Validate required parameters
+            if (pin == null || cardNumber == null) {
+                result.error("INVALID_PARAMS", "PIN and card number are required", null);
+                return;
+            }
+
+            // Convert transaction amount
+            Long transactionAmount = null;
+            if (transactionAmountObj != null) {
+                if (transactionAmountObj instanceof Integer) {
+                    transactionAmount = ((Integer) transactionAmountObj).longValue();
+                } else if (transactionAmountObj instanceof Long) {
+                    transactionAmount = (Long) transactionAmountObj;
+                }
+            }
+
+            // Set defaults
+            if (format == null) format = DynamicPinBlockManager.PIN_BLOCK_FORMAT_0;
+            if (encryptionKey == null) encryptionKey = "404142434445464748494A4B4C4D4E4F";
+            if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
+            if (useHardwareEncryption == null) useHardwareEncryption = true;
+
+            Map<String, Object> authorizePinResult = dynamicManager.authorizePin(
+                    pin, cardNumber, transactionAmount, format, encryptionKey, encryptionType, useHardwareEncryption);
+
+            result.success(authorizePinResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleAuthorizePinDynamic: " + e.getMessage());
+            result.error("AUTHORIZE_PIN_DYNAMIC_EXCEPTION", "Exception: " + e.getMessage(), null);
         }
     }
 
