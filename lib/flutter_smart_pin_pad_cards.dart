@@ -40,12 +40,18 @@ class FlutterSmartPinPadCards {
   /// Card Reading Methods
 
   /// Start swipe card reading
-  static Future<Map<String, dynamic>?> startSwipeCardReading() async {
+  static Future<CardData> startSwipeCardReading() async {
     try {
-      final result = await _channel.invokeMethod('startSwipeCardReading');
-      return Map<String, dynamic>.from(result);
+      final Map<dynamic, dynamic> result =
+      await _channel.invokeMethod('startSwipeCardReading');
+
+      // Konversi hasil ke format yang diharapkan
+      Map<String, dynamic> processedResult = _processResult(result);
+
+      // Buat objek CardData dari hasil yang sudah diproses
+      return CardData.fromMap(processedResult);
     } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error');
+      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
     }
   }
 
@@ -59,7 +65,7 @@ class FlutterSmartPinPadCards {
   }
 
   /// Start insert card reading
-  static Future<Map<String, dynamic>?> startInsertCardReading({
+  static Future<CardData> startInsertCardReading({
     bool enableMag = true,
     bool enableIcc = true,
     bool enableRf = true,
@@ -72,8 +78,14 @@ class FlutterSmartPinPadCards {
         'enableRf': enableRf,
         'timeout': timeout,
       });
-      return Map<String, dynamic>.from(result);
-    } on PlatformException catch (e) {
+      // Log hasil untuk debugging
+      print('Card Reading Result: $result');
+
+      // Konversi hasil ke format yang diharapkan
+      Map<String, dynamic> processedResult = _processResult(result);
+
+      // Buat objek CardData dari hasil yang sudah diproses
+      return CardData.fromMap(processedResult);    } on PlatformException catch (e) {
       throw CardReaderException(e.code, e.message ?? 'Unknown error');
     }
   }
@@ -380,5 +392,40 @@ class FlutterSmartPinPadCards {
       default:
         return "Unknown";
     }
+  }
+
+  /// Helper method to process the result from method channel
+  /// and convert it to a consistent format
+  static Map<String, dynamic> _processResult(Map<dynamic, dynamic> result) {
+    // Konversi keys dari dynamic ke String
+    Map<String, dynamic> processedResult = {};
+
+    result.forEach((key, value) {
+      if (key is String) {
+        processedResult[key] = value;
+      }
+    });
+
+    // Standardisasi keys untuk PAN/cardNumber
+    if (processedResult.containsKey('pan') && !processedResult.containsKey('cardNumber')) {
+      processedResult['cardNumber'] = processedResult['pan'];
+    } else if (processedResult.containsKey('cardNumber') && !processedResult.containsKey('pan')) {
+      processedResult['pan'] = processedResult['cardNumber'];
+    }
+
+    // Handle EMV data untuk kartu IC jika diperlukan
+    if (processedResult.containsKey('cardType') &&
+        processedResult['cardType'] == 'IC' &&
+        processedResult.containsKey('emvData')) {
+      // Ekstrak data tambahan dari EMV jika diperlukan
+      var emvData = processedResult['emvData'];
+      if (emvData is Map && emvData.containsKey('pan') &&
+          (processedResult['pan'] == null || processedResult['pan'].isEmpty)) {
+        processedResult['pan'] = emvData['pan'];
+        processedResult['cardNumber'] = emvData['pan'];
+      }
+    }
+
+    return processedResult;
   }
 }
