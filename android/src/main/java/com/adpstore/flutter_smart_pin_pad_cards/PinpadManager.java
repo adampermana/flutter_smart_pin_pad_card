@@ -400,7 +400,9 @@ public class PinpadManager {
             // Get PAN block (rightmost 12 digits of PAN, excluding check digit, padded with zeros)
             String panDigits = cardNumber.replaceAll("[^0-9]", "");
             if (panDigits.length() < 13) {
-                panDigits = panDigits.padLeft(13, '0');
+                panDigits = String.format("%13s", panDigits).replace(' ', '0');
+
+//                panDigits = panDigits.padLeft(13, '0');
             }
 
             String panBlock = "0000" + panDigits.substring(Math.max(0, panDigits.length() - 13), panDigits.length() - 1);
