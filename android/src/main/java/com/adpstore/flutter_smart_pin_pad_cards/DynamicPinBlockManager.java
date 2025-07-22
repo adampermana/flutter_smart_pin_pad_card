@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Random;
 
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 public class DynamicPinBlockManager {
@@ -703,82 +702,57 @@ public class DynamicPinBlockManager {
     /**
      * Encrypt PIN block using software (for testing/development)
      */
-
     private String encryptWithSoftware(String plainPinBlock, String encryptionKey, int encryptionType) {
         try {
-            Log.d(TAG, "Using software encryption (DES/3DES)");
+            Log.d(TAG, "Using software encryption (for testing only)");
 
             byte[] pinBlockBytes = hexToBytes(plainPinBlock);
             byte[] keyBytes = hexToBytes(encryptionKey);
 
-            byte[] encrypted;
-
-            if (encryptionType == 1) { // 1 = DES
-                if (keyBytes.length != 8) {
-                    throw new IllegalArgumentException("DES key must be 8 bytes (16 hex characters)");
-                }
-
-                SecretKey key = new SecretKeySpec(keyBytes, "DES");
-                Cipher cipher = Cipher.getInstance("DES/ECB/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, key);
-                encrypted = cipher.doFinal(pinBlockBytes);
-
-            } else if (encryptionType == 2) { // 2 = Triple DES
-                if (keyBytes.length != 16 && keyBytes.length != 24) {
-                    throw new IllegalArgumentException("3DES key must be 16 or 24 bytes (32 or 48 hex characters)");
-                }
-
-                // Extend 16-byte (double key) to 24-byte (triple key) if needed
+            // Untuk Triple DES
+            if (encryptionType == ENCRYPT_3DES) {
+                // Triple DES membutuhkan key 16 atau 24 bytes
                 if (keyBytes.length == 16) {
-                    byte[] extendedKey = new byte[24];
-                    System.arraycopy(keyBytes, 0, extendedKey, 0, 16);
-                    System.arraycopy(keyBytes, 0, extendedKey, 16, 8);
-                    keyBytes = extendedKey;
+                    // Untuk 2-key Triple DES (K1, K2, K1)
+                    byte[] fullKey = new byte[24];
+                    System.arraycopy(keyBytes, 0, fullKey, 0, 16);
+                    System.arraycopy(keyBytes, 0, fullKey, 16, 8);
+                    keyBytes = fullKey;
                 }
 
-                SecretKey key = new SecretKeySpec(keyBytes, "DESede");
+                // Setup Triple DES
+                SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "DESede");
                 Cipher cipher = Cipher.getInstance("DESede/ECB/NoPadding");
-                cipher.init(Cipher.ENCRYPT_MODE, key);
-                encrypted = cipher.doFinal(pinBlockBytes);
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec);
 
-            } else {
-                throw new IllegalArgumentException("Unsupported encryption type: " + encryptionType);
+                // Encrypt
+                byte[] encrypted = cipher.doFinal(pinBlockBytes);
+                String result = bytesToHex(encrypted);
+
+                Log.d(TAG, "Triple DES encryption result: " + result);
+                return result;
+            }
+            // Untuk DES biasa
+            else if (encryptionType == ENCRYPT_DES) {
+                SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "DES");
+                Cipher cipher = Cipher.getInstance("DES/ECB/NoPadding");
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+                byte[] encrypted = cipher.doFinal(pinBlockBytes);
+                String result = bytesToHex(encrypted);
+
+                Log.d(TAG, "DES encryption result: " + result);
+                return result;
             }
 
-            String result = bytesToHex(encrypted);
-            Log.d(TAG, "Encrypted PIN Block: " + result);
-            return result;
-
         } catch (Exception e) {
-            Log.e(TAG, "Software encryption failed: " + e.getMessage(), e);
+            Log.e(TAG, "Software encryption failed: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
-    }
 
-//    private String encryptWithSoftware(String plainPinBlock, String encryptionKey, int encryptionType) {
-//        try {
-//            Log.d(TAG, "Using software encryption (for testing only)");
-//
-//            byte[] pinBlockBytes = hexToBytes(plainPinBlock);
-//            byte[] keyBytes = hexToBytes(encryptionKey);
-//
-//            // Simple XOR encryption for testing (NOT SECURE!)
-//            byte[] encrypted = new byte[8];
-//            for (int i = 0; i < 8; i++) {
-//                encrypted[i] = (byte) (pinBlockBytes[i] ^ keyBytes[i % keyBytes.length]);
-//            }
-//
-//            String result = bytesToHex(encrypted);
-//            Log.w(TAG, "Software encryption result: " + result);
-//            Log.w(TAG, "WARNING: Software encryption is for testing only!");
-//
-//            return result;
-//
-//        } catch (Exception e) {
-//            Log.e(TAG, "Software encryption failed: " + e.getMessage());
-//            return null;
-//        }
-//    }
+        return null;
+    }
 
     // Utility methods
 
