@@ -469,20 +469,20 @@ class FlutterSmartPinPadCards {
   /// - params: Parameters for MAC calculation
   /// Returns a MacResult object if successful
   /// Throws a CardReaderException if there's an error
-  static Future<MacResult> getMac({
-    required Map<String, dynamic> params,
-  }) async {
-    try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
-        'getMac',
-        params,
-      );
-
-      return MacResult.fromMap(Map<String, dynamic>.from(result));
-    } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
-    }
-  }
+  // static Future<MacResult> getMac({
+  //   required Map<String, dynamic> params,
+  // }) async {
+  //   try {
+  //     final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+  //       'getMac',
+  //       params,
+  //     );
+  //
+  //     return MacResult.fromMap(Map<String, dynamic>.from(result));
+  //   } on PlatformException catch (e) {
+  //     throw CardReaderException(e.code, e.message ?? 'Unknown error occurred');
+  //   }
+  // }
 
   /// Get random number from PIN pad
   /// Returns a random number (hex string) if successful

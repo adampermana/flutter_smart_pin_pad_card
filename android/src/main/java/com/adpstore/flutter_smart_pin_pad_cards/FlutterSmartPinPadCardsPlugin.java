@@ -154,9 +154,9 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleGetKeyState(call, result);
                 break;
 
-            case "getMac":
-                handleGetMac(call, result);
-                break;
+//            case "getMac":
+//                handleGetMac(call, result);
+//                break;
 
             case "getRandom":
                 handleGetRandom(result);
@@ -651,40 +651,40 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    private void handleGetMac(MethodCall call, Result result) {
-        try {
-            if (pinpadManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
-
-            Map<String, Object> arguments = call.arguments();
-            // Convert arguments to Bundle for MAC calculation
-            Bundle param = new Bundle();
-            for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                if (value instanceof String) {
-                    param.putString(key, (String) value);
-                } else if (value instanceof Integer) {
-                    param.putInt(key, (Integer) value);
-                } else if (value instanceof Boolean) {
-                    param.putBoolean(key, (Boolean) value);
-                }
-            }
-
-            Map<String, Object> macResult = pinpadManager.getMac(param);
-            if ((Boolean) macResult.get("success")) {
-                result.success(macResult);
-            } else {
-                result.error("MAC_ERROR", (String) macResult.get("error"), macResult);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleGetMac: " + e.getMessage());
-            result.error("MAC_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
+//    private void handleGetMac(MethodCall call, Result result) {
+//        try {
+//            if (pinpadManager == null) {
+//                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+//                return;
+//            }
+//
+//            Map<String, Object> arguments = call.arguments();
+//            // Convert arguments to Bundle for MAC calculation
+//            Bundle param = new Bundle();
+//            for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+//                String key = entry.getKey();
+//                Object value = entry.getValue();
+//                if (value instanceof String) {
+//                    param.putString(key, (String) value);
+//                } else if (value instanceof Integer) {
+//                    param.putInt(key, (Integer) value);
+//                } else if (value instanceof Boolean) {
+//                    param.putBoolean(key, (Boolean) value);
+//                }
+//            }
+//
+//            Map<String, Object> macResult = pinpadManager.getMac(param);
+//            if ((Boolean) macResult.get("success")) {
+//                result.success(macResult);
+//            } else {
+//                result.error("MAC_ERROR", (String) macResult.get("error"), macResult);
+//            }
+//
+//        } catch (Exception e) {
+//            Log.e(TAG, "Exception in handleGetMac: " + e.getMessage());
+//            result.error("MAC_EXCEPTION", "Exception: " + e.getMessage(), null);
+//        }
+//    }
 
     private void handleGetRandom(Result result) {
         try {

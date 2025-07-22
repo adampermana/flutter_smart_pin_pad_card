@@ -315,13 +315,13 @@ class MethodChannelFlutterSmartPinPadCards extends FlutterSmartPinPadCardsPlatfo
   // UTILITY METHODS
   // ============================================================================
 
-  @override
-  Future<Map<String, dynamic>> getMac({
-    required Map<String, dynamic> params,
-  }) async {
-    final result = await methodChannel.invokeMethod('getMac', params);
-    return Map<String, dynamic>.from(result);
-  }
+  // @override
+  // Future<Map<String, dynamic>> getMac({
+  //   required Map<String, dynamic> params,
+  // }) async {
+  //   final result = await methodChannel.invokeMethod('getMac', params);
+  //   return Map<String, dynamic>.from(result);
+  // }
 
   @override
   Future<String> getRandom() async {

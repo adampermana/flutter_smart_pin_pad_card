@@ -192,15 +192,15 @@ abstract class FlutterSmartPinPadCardsPlatform extends PlatformInterface {
   // UTILITY METHODS
   // ============================================================================
 
-  Future<Map<String, dynamic>> getMac({
-    required Map<String, dynamic> params,
-  }) {
-    throw UnimplementedError('getMac() has not been implemented.');
-  }
-
-  Future<String> getRandom() {
-    throw UnimplementedError('getRandom() has not been implemented.');
-  }
+  // Future<Map<String, dynamic>> getMac({
+  //   required Map<String, dynamic> params,
+  // }) {
+  //   throw UnimplementedError('getMac() has not been implemented.');
+  // }
+  //
+  // Future<String> getRandom() {
+  //   throw UnimplementedError('getRandom() has not been implemented.');
+  // }
 
   // ============================================================================
   // TESTING AND DEBUG METHODS
