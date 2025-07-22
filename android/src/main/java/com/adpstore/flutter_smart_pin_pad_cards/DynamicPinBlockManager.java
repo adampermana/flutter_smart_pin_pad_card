@@ -153,140 +153,140 @@ public class DynamicPinBlockManager {
     /**
      * Create PIN operation (Processing Code: 920000)
      */
-//    public Map<String, Object> createPin(
-//            String newPin,
-//            String cardNumber,
-//            int format,
-//            String encryptionKey,
-//            int encryptionType,
-//            boolean useHardwareEncryption) {
-//
-//        Map<String, Object> result = createDynamicPinBlock(
-//                newPin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
-//
-//        if ((Boolean) result.get("success")) {
-//            result.put("processingCode", PROCESSING_CODE_CREATE_PIN);
-//            result.put("operation", "Create PIN");
-//            result.put("message", "PIN created successfully");
-//
-//            // Additional data for create PIN
-//            result.put("newPinLength", newPin.length());
-//            result.put("pinCreationTime", System.currentTimeMillis());
-//
-//            Log.d(TAG, "Create PIN operation successful for card: " + maskCardNumber(cardNumber));
-//        }
-//
-//        return result;
-//    }
+    public Map<String, Object> createPin(
+            String newPin,
+            String cardNumber,
+            int format,
+            String encryptionKey,
+            int encryptionType,
+            boolean useHardwareEncryption) {
+
+        Map<String, Object> result = createDynamicPinBlock(
+                newPin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
+
+        if ((Boolean) result.get("success")) {
+            result.put("processingCode", PROCESSING_CODE_CREATE_PIN);
+            result.put("operation", "Create PIN");
+            result.put("message", "PIN created successfully");
+
+            // Additional data for create PIN
+            result.put("newPinLength", newPin.length());
+            result.put("pinCreationTime", System.currentTimeMillis());
+
+            Log.d(TAG, "Create PIN operation successful for card: " + maskCardNumber(cardNumber));
+        }
+
+        return result;
+    }
 
     /**
      * Change PIN operation (Processing Code: 930000)
      */
-//    public Map<String, Object> changePin(
-//            String currentPin,
-//            String newPin,
-//            String cardNumber,
-//            int format,
-//            String encryptionKey,
-//            int encryptionType,
-//            boolean useHardwareEncryption) {
-//
-//        Map<String, Object> result = new HashMap<>();
-//
-//        try {
-//            // Validate current PIN by creating its block
-//            Map<String, Object> currentPinResult = createDynamicPinBlock(
-//                    currentPin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
-//
-//            if (!(Boolean) currentPinResult.get("success")) {
-//                result.put("success", false);
-//                result.put("error", "Current PIN validation failed");
-//                result.put("responseCode", "55");
-//                return result;
-//            }
-//
-//            // Create new PIN block
-//            Map<String, Object> newPinResult = createDynamicPinBlock(
-//                    newPin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
-//
-//            if (!(Boolean) newPinResult.get("success")) {
-//                result.put("success", false);
-//                result.put("error", "New PIN block creation failed");
-//                result.put("responseCode", "91");
-//                return result;
-//            }
-//
-//            // Build change PIN result
-//            result.put("success", true);
-//            result.put("responseCode", "00");
-//            result.put("processingCode", PROCESSING_CODE_CHANGE_PIN);
-//            result.put("operation", "Change PIN");
-//            result.put("message", "PIN changed successfully");
-//
-//            result.put("oldPinBlock", currentPinResult.get("pinBlock"));
-//            result.put("newPinBlock", newPinResult.get("pinBlock"));
-//            result.put("oldPinLength", currentPin.length());
-//            result.put("newPinLength", newPin.length());
-//            result.put("cardNumber", maskCardNumber(cardNumber));
-//            result.put("format", format);
-//            result.put("encryptionType", encryptionType);
-//            result.put("timestamp", System.currentTimeMillis());
-//
-//            Log.d(TAG, "Change PIN operation successful for card: " + maskCardNumber(cardNumber));
-//
-//        } catch (Exception e) {
-//            Log.e(TAG, "Exception during change PIN: " + e.getMessage());
-//            result.put("success", false);
-//            result.put("error", "Exception: " + e.getMessage());
-//            result.put("responseCode", "91");
-//        }
-//
-//        return result;
-//    }
+    public Map<String, Object> changePin(
+            String currentPin,
+            String newPin,
+            String cardNumber,
+            int format,
+            String encryptionKey,
+            int encryptionType,
+            boolean useHardwareEncryption) {
+
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // Validate current PIN by creating its block
+            Map<String, Object> currentPinResult = createDynamicPinBlock(
+                    currentPin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
+
+            if (!(Boolean) currentPinResult.get("success")) {
+                result.put("success", false);
+                result.put("error", "Current PIN validation failed");
+                result.put("responseCode", "55");
+                return result;
+            }
+
+            // Create new PIN block
+            Map<String, Object> newPinResult = createDynamicPinBlock(
+                    newPin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
+
+            if (!(Boolean) newPinResult.get("success")) {
+                result.put("success", false);
+                result.put("error", "New PIN block creation failed");
+                result.put("responseCode", "91");
+                return result;
+            }
+
+            // Build change PIN result
+            result.put("success", true);
+            result.put("responseCode", "00");
+            result.put("processingCode", PROCESSING_CODE_CHANGE_PIN);
+            result.put("operation", "Change PIN");
+            result.put("message", "PIN changed successfully");
+
+            result.put("oldPinBlock", currentPinResult.get("pinBlock"));
+            result.put("newPinBlock", newPinResult.get("pinBlock"));
+            result.put("oldPinLength", currentPin.length());
+            result.put("newPinLength", newPin.length());
+            result.put("cardNumber", maskCardNumber(cardNumber));
+            result.put("format", format);
+            result.put("encryptionType", encryptionType);
+            result.put("timestamp", System.currentTimeMillis());
+
+            Log.d(TAG, "Change PIN operation successful for card: " + maskCardNumber(cardNumber));
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during change PIN: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", "Exception: " + e.getMessage());
+            result.put("responseCode", "91");
+        }
+
+        return result;
+    }
 
     /**
      * PIN Authorization operation (Processing Code: 940000)
      */
-//    public Map<String, Object> authorizePin(
-//            String pin,
-//            String cardNumber,
-//            Long transactionAmount,
-//            int format,
-//            String encryptionKey,
-//            int encryptionType,
-//            boolean useHardwareEncryption) {
-//
-//        Map<String, Object> result = createDynamicPinBlock(
-//                pin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
-//
-//        if ((Boolean) result.get("success")) {
-//            result.put("processingCode", PROCESSING_CODE_AUTHORIZE_PIN);
-//            result.put("operation", "PIN Authorization");
-//            result.put("message", "PIN authorization successful");
-//            result.put("isAuthorized", true);
-//
-//            // Authorization specific data
-//            Map<String, Object> authData = new HashMap<>();
-//            authData.put("cardNumber", maskCardNumber(cardNumber));
-//            authData.put("pinLength", pin.length());
-//            authData.put("processingCode", PROCESSING_CODE_AUTHORIZE_PIN);
-//            authData.put("authorizationTime", System.currentTimeMillis());
-//
-//            if (transactionAmount != null) {
-//                authData.put("transactionAmount", transactionAmount);
-//            }
-//
-//            result.put("authorizationData", authData);
-//            result.put("remainingTries", 3); // Simulated
-//
-//            Log.d(TAG, "PIN authorization successful for card: " + maskCardNumber(cardNumber));
-//        } else {
-//            result.put("isAuthorized", false);
-//            result.put("remainingTries", 2); // Simulated
-//        }
-//
-//        return result;
-//    }
+    public Map<String, Object> authorizePin(
+            String pin,
+            String cardNumber,
+            Long transactionAmount,
+            int format,
+            String encryptionKey,
+            int encryptionType,
+            boolean useHardwareEncryption) {
+
+        Map<String, Object> result = createDynamicPinBlock(
+                pin, cardNumber, format, encryptionKey, encryptionType, "F", useHardwareEncryption);
+
+        if ((Boolean) result.get("success")) {
+            result.put("processingCode", PROCESSING_CODE_AUTHORIZE_PIN);
+            result.put("operation", "PIN Authorization");
+            result.put("message", "PIN authorization successful");
+            result.put("isAuthorized", true);
+
+            // Authorization specific data
+            Map<String, Object> authData = new HashMap<>();
+            authData.put("cardNumber", maskCardNumber(cardNumber));
+            authData.put("pinLength", pin.length());
+            authData.put("processingCode", PROCESSING_CODE_AUTHORIZE_PIN);
+            authData.put("authorizationTime", System.currentTimeMillis());
+
+            if (transactionAmount != null) {
+                authData.put("transactionAmount", transactionAmount);
+            }
+
+            result.put("authorizationData", authData);
+            result.put("remainingTries", 3); // Simulated
+
+            Log.d(TAG, "PIN authorization successful for card: " + maskCardNumber(cardNumber));
+        } else {
+            result.put("isAuthorized", false);
+            result.put("remainingTries", 2); // Simulated
+        }
+
+        return result;
+    }
 
     /**
      * Create plain PIN block without encryption based on ISO 9564 formats
