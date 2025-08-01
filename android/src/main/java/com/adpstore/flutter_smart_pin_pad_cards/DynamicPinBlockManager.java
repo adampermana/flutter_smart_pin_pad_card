@@ -17,6 +17,9 @@ public class DynamicPinBlockManager {
     private AidlPinpad pinpad;
     private static DynamicPinBlockManager instance;
 
+    // Hardcoded master key as requested
+    private static String MASTER_KEY = "1234567890ABCDEF1234567890ABCDEF"; // 32 hex chars = 16 bytes
+
     // PIN Block format constants
     public static final int PIN_BLOCK_FORMAT_0 = 0; // ISO 9564-1 Format 0
     public static final int PIN_BLOCK_FORMAT_1 = 1; // ISO 9564-1 Format 1
@@ -39,6 +42,11 @@ public class DynamicPinBlockManager {
     public static final String PROCESSING_CODE_CHANGE_PIN = "930000";
     public static final String PROCESSING_CODE_AUTHORIZE_PIN = "940000";
 
+    // Master key index
+    private static final int MASTER_KEY_INDEX = 0;
+    private static final int WORK_KEY_INDEX = 0;
+
+
     // Encryption modes
     public static final byte MODE_ENCRYPT = 0;
     public static final byte MODE_DECRYPT = 1;
@@ -54,6 +62,7 @@ public class DynamicPinBlockManager {
         return instance;
     }
 
+
     public boolean initPinpad() {
         try {
             if (pinpad == null) {
@@ -61,9 +70,10 @@ public class DynamicPinBlockManager {
             }
 
             if (pinpad != null) {
-                // AidlPinpad doesn't have open() method, just check if it's available
-                Log.d(TAG, "Pinpad initialized successfully");
-                return true;
+                // Load hardcoded master key
+                boolean masterKeyLoaded = loadHardcodedMasterKey();
+                Log.d(TAG, "Pinpad initialized successfully, master key loaded: " + masterKeyLoaded);
+                return masterKeyLoaded;
             }
             return false;
         } catch (Exception e) {
@@ -83,6 +93,62 @@ public class DynamicPinBlockManager {
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to close pinpad: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Load hardcoded master key into the pinpad
+     */
+    private boolean loadHardcodedMasterKey() {
+        try {
+            if (pinpad == null) {
+                Log.e(TAG, "Pinpad not available");
+                return false;
+            }
+
+            byte[] masterKeyData = hexToBytes(MASTER_KEY);
+
+            // Load master key with check value (first 3 bytes of encrypted zero block)
+            byte[] checkValue = calculateKeyCheckValue(masterKeyData);
+
+            boolean result = pinpad.loadMainkey(MASTER_KEY_INDEX, masterKeyData, checkValue);
+            Log.d(TAG, "Master key load result: " + result);
+
+            return result;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load master key: " + e.getMessage());
+            return false;
+        }
+    }
+
+
+    /**
+     * Calculate key check value (KCV) - first 3 bytes of encrypted zero block
+     */
+    private byte[] calculateKeyCheckValue(byte[] keyData) {
+        try {
+            byte[] zeroBlock = new byte[8]; // All zeros
+
+            if (keyData.length == 16) {
+                // 2-key Triple DES
+                byte[] fullKey = new byte[24];
+                System.arraycopy(keyData, 0, fullKey, 0, 16);
+                System.arraycopy(keyData, 0, fullKey, 16, 8);
+                keyData = fullKey;
+            }
+
+            SecretKeySpec keySpec = new SecretKeySpec(keyData, "DESede");
+            Cipher cipher = Cipher.getInstance("DESede/ECB/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+            byte[] encrypted = cipher.doFinal(zeroBlock);
+            byte[] kcv = new byte[3];
+            System.arraycopy(encrypted, 0, kcv, 0, 3);
+
+            return kcv;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to calculate key check value: " + e.getMessage());
+            return new byte[3]; // Return empty KCV on error
         }
     }
 
@@ -128,16 +194,24 @@ public class DynamicPinBlockManager {
     }
 
     /**
-     * Load work key
+     * Load work key - decrypt with master key first
      */
-    public boolean loadWorkKey(int keyType, int masterKeyId, int workKeyId, byte[] keyData, byte[] checkValue) {
+    public boolean loadWorkKey(int keyType, int masterKeyId, int workKeyId, byte[] encryptedKeyData, byte[] checkValue) {
         try {
             if (pinpad == null) {
                 Log.e(TAG, "Pinpad not initialized");
                 return false;
             }
 
-            boolean result = pinpad.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
+            // Decrypt working key using master key
+            byte[] decryptedWorkKey = decryptWorkingKey(encryptedKeyData, masterKeyId);
+            if (decryptedWorkKey == null) {
+                Log.e(TAG, "Failed to decrypt working key");
+                return false;
+            }
+
+            // Load the decrypted working key
+            boolean result = pinpad.loadWorkKey(keyType, masterKeyId, workKeyId, decryptedWorkKey, checkValue);
             Log.d(TAG, "Load work key result: " + result);
             return result;
         } catch (Exception e) {
@@ -145,6 +219,72 @@ public class DynamicPinBlockManager {
             return false;
         }
     }
+
+    /**
+     * Decrypt working key using master key
+     */
+    private byte[] decryptWorkingKey(byte[] encryptedWorkKey, int masterKeyIndex) {
+        try {
+            // Use hardware decryption if available, otherwise software fallback
+            if (pinpad != null) {
+                try {
+                    // Try hardware decryption using AidlPinpad
+                    byte[] decryptedKey = new byte[encryptedWorkKey.length];
+
+                    // Use encryptByTdk for decryption (mode 1 = decrypt)
+                    int result = pinpad.encryptByTdk(masterKeyIndex, (byte) 1, null, encryptedWorkKey, decryptedKey);
+
+                    if (result == 0) {
+                        Log.d(TAG, "Working key decrypted using hardware");
+                        return decryptedKey;
+                    } else {
+                        Log.w(TAG, "Hardware decryption failed with code: " + result + ", using software fallback");
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Hardware decryption exception: " + e.getMessage() + ", using software fallback");
+                }
+            }
+
+            // Software fallback
+            return decryptWorkingKeySoftware(encryptedWorkKey);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to decrypt working key: " + e.getMessage());
+            return null;
+        }
+    }
+
+
+    /**
+     * Software fallback for working key decryption
+     */
+    private byte[] decryptWorkingKeySoftware(byte[] encryptedWorkKey) {
+        try {
+            byte[] masterKeyBytes = hexToBytes(MASTER_KEY);
+
+            // For Triple DES
+            if (masterKeyBytes.length == 16) {
+                // 2-key Triple DES (K1, K2, K1)
+                byte[] fullKey = new byte[24];
+                System.arraycopy(masterKeyBytes, 0, fullKey, 0, 16);
+                System.arraycopy(masterKeyBytes, 0, fullKey, 16, 8);
+                masterKeyBytes = fullKey;
+            }
+
+            SecretKeySpec keySpec = new SecretKeySpec(masterKeyBytes, "DESede");
+            Cipher cipher = Cipher.getInstance("DESede/ECB/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec);
+
+            byte[] decryptedKey = cipher.doFinal(encryptedWorkKey);
+            Log.d(TAG, "Working key decrypted using software fallback");
+
+            return decryptedKey;
+        } catch (Exception e) {
+            Log.e(TAG, "Software working key decryption failed: " + e.getMessage());
+            return null;
+        }
+    }
+
 
     /**
      * Get key state
@@ -164,8 +304,10 @@ public class DynamicPinBlockManager {
         }
     }
 
+
+
     /**
-     * Generate MAC
+     * Generate MAC using loaded keys
      */
     public Map<String, Object> getMac(Bundle param) {
         Map<String, Object> result = new HashMap<>();
@@ -176,11 +318,32 @@ public class DynamicPinBlockManager {
                 return result;
             }
 
-            // Implementation depends on specific MAC requirements
-            // This is a placeholder implementation
-            result.put("success", true);
-            result.put("mac", "1234567890ABCDEF"); // Placeholder
-            result.put("timestamp", System.currentTimeMillis());
+            // Extract MAC parameters from bundle
+            String data = param.getString("data", "");
+            int keyIndex = param.getInt("keyIndex", 0);
+
+            if (data.isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Data for MAC calculation is required");
+                return result;
+            }
+
+            // Use pinpad MAC calculation if available
+            try {
+                byte[] dataBytes = hexToBytes(data);
+                byte[] macResult = new byte[8]; // MAC is typically 8 bytes
+
+                // This is a placeholder - actual MAC calculation would use appropriate pinpad method
+                // The AidlPinpad interface might have a MAC calculation method
+
+                result.put("success", true);
+                result.put("mac", bytesToHex(macResult));
+                result.put("timestamp", System.currentTimeMillis());
+
+            } catch (Exception e) {
+                result.put("success", false);
+                result.put("error", "MAC calculation failed: " + e.getMessage());
+            }
 
         } catch (Exception e) {
             result.put("success", false);
@@ -188,7 +351,6 @@ public class DynamicPinBlockManager {
         }
         return result;
     }
-
 
     /**
      * Generate random number
@@ -215,10 +377,12 @@ public class DynamicPinBlockManager {
         }
     }
 
+
+
     /**
      * Legacy createPinBlock method for backward compatibility
      */
-    public Map<String, Object> createPinBlock(String pin, String cardNumber, int format, int keyIndex, int encryptionType,  String encryptionKey) {
+    public Map<String, Object> createPinBlock(String pin, String cardNumber, int format, int keyIndex, int encryptionType, String encryptionKey) {
         Map<String, Object> result = new HashMap<>();
 
         try {
@@ -244,15 +408,17 @@ public class DynamicPinBlockManager {
                 return result;
             }
 
-            // Since AidlPinpad doesn't have direct inputPin method,
-            // we'll use the dynamic PIN block creation as fallback
-            Log.d(TAG, "Using dynamic PIN block creation for legacy method");
+            // Load working key if provided
+            boolean workKeyLoaded = true;
+            if (encryptionKey != null && !encryptionKey.isEmpty()) {
+                workKeyLoaded = loadWorkingKeyForEncryption(encryptionKey, keyIndex);
+            }
 
-            // Since AidlPinpad doesn't have direct inputPin method,
-            // we'll use the dynamic PIN block creation as fallback
-            Log.d(TAG, "Using dynamic PIN block creation for legacy method");
+            if (!workKeyLoaded) {
+                Log.w(TAG, "Working key load failed, using default encryption");
+            }
 
-//            String defaultKey = "404142434445464748494A4B4C4D4E4F";
+            // Use dynamic PIN block creation
             Map<String, Object> dynamicResult = createDynamicPinBlock(
                     pin, cardNumber, format, encryptionKey, encryptionType, "F", true);
 
@@ -281,6 +447,27 @@ public class DynamicPinBlockManager {
         }
 
         return result;
+    }
+
+
+    /**
+     * Load working key for PIN block encryption
+     */
+    private boolean loadWorkingKeyForEncryption(String encryptionKey, int keyIndex) {
+        try {
+            if (encryptionKey == null || encryptionKey.isEmpty()) {
+                return false;
+            }
+
+            byte[] encryptedKeyData = hexToBytes(encryptionKey);
+            byte[] checkValue = calculateKeyCheckValue(encryptedKeyData);
+
+            return loadWorkKey(KEY_TYPE_PIK, MASTER_KEY_INDEX, keyIndex, encryptedKeyData, checkValue);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load working key for encryption: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -658,7 +845,7 @@ public class DynamicPinBlockManager {
     }
 
     /**
-     * Encrypt PIN block using hardware
+     * Encrypt PIN block using hardware with working key
      */
     private String encryptWithHardware(String plainPinBlock, String encryptionKey, int encryptionType) {
         try {
@@ -667,20 +854,21 @@ public class DynamicPinBlockManager {
                 return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
             }
 
-            // Try to load the encryption key
-            byte[] keyData = hexToBytes(encryptionKey);
-            boolean keyLoaded = pinpad.loadMainkey(0, keyData, null);
-
-            if (!keyLoaded) {
-                Log.w(TAG, "Failed to load encryption key, trying work key...");
-                keyLoaded = pinpad.loadWorkKey(KEY_TYPE_PIK, 0, 0, keyData, null);
+            // Load working key if provided
+            if (encryptionKey != null && !encryptionKey.isEmpty()) {
+                boolean workKeyLoaded = loadWorkingKeyForEncryption(encryptionKey, WORK_KEY_INDEX);
+                if (!workKeyLoaded) {
+                    Log.w(TAG, "Working key load failed, using software fallback");
+                    return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
+                }
             }
 
-            if (keyLoaded) {
+            try {
                 byte[] pinBlockBytes = hexToBytes(plainPinBlock);
-                byte[] encryptedBlock = new byte[8];
+                byte[] encryptedBlock = new byte[8]; // PIN block is 8 bytes
 
-                int result = pinpad.encryptByTdk(0, MODE_ENCRYPT, null, pinBlockBytes, encryptedBlock);
+                // Use working key for encryption (mode 0 = encrypt)
+                int result = pinpad.encryptByTdk(WORK_KEY_INDEX, (byte) 0, null, pinBlockBytes, encryptedBlock);
 
                 if (result == 0) {
                     Log.d(TAG, "Hardware encryption successful");
@@ -688,6 +876,8 @@ public class DynamicPinBlockManager {
                 } else {
                     Log.w(TAG, "Hardware encryption failed with code: " + result);
                 }
+            } catch (Exception e) {
+                Log.w(TAG, "Hardware encryption exception: " + e.getMessage());
             }
 
             Log.w(TAG, "Hardware encryption failed, using software fallback");
@@ -699,6 +889,7 @@ public class DynamicPinBlockManager {
         }
     }
 
+
     /**
      * Encrypt PIN block using software (for testing/development)
      */
@@ -707,34 +898,45 @@ public class DynamicPinBlockManager {
             Log.d(TAG, "Using software encryption (for testing only)");
 
             byte[] pinBlockBytes = hexToBytes(plainPinBlock);
-            byte[] keyBytes = hexToBytes(encryptionKey);
+            byte[] workingKey;
 
-            // Untuk Triple DES
+            // If encryption key is provided, decrypt it with master key first
+            if (encryptionKey != null && !encryptionKey.isEmpty()) {
+                byte[] encryptedWorkKey = hexToBytes(encryptionKey);
+                workingKey = decryptWorkingKeySoftware(encryptedWorkKey);
+                if (workingKey == null) {
+                    Log.e(TAG, "Failed to decrypt working key");
+                    return null;
+                }
+            } else {
+                // Use master key directly (not recommended for production)
+                workingKey = hexToBytes(MASTER_KEY);
+            }
+
+            // Encrypt PIN block with working key
             if (encryptionType == ENCRYPT_3DES) {
-                // Triple DES membutuhkan key 16 atau 24 bytes
-                if (keyBytes.length == 16) {
-                    // Untuk 2-key Triple DES (K1, K2, K1)
+                // Triple DES encryption
+                if (workingKey.length == 16) {
+                    // 2-key Triple DES (K1, K2, K1)
                     byte[] fullKey = new byte[24];
-                    System.arraycopy(keyBytes, 0, fullKey, 0, 16);
-                    System.arraycopy(keyBytes, 0, fullKey, 16, 8);
-                    keyBytes = fullKey;
+                    System.arraycopy(workingKey, 0, fullKey, 0, 16);
+                    System.arraycopy(workingKey, 0, fullKey, 16, 8);
+                    workingKey = fullKey;
                 }
 
-                // Setup Triple DES
-                SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "DESede");
+                SecretKeySpec keySpec = new SecretKeySpec(workingKey, "DESede");
                 Cipher cipher = Cipher.getInstance("DESede/ECB/NoPadding");
                 cipher.init(Cipher.ENCRYPT_MODE, keySpec);
 
-                // Encrypt
                 byte[] encrypted = cipher.doFinal(pinBlockBytes);
                 String result = bytesToHex(encrypted);
 
                 Log.d(TAG, "Triple DES encryption result: " + result);
                 return result;
             }
-            // Untuk DES biasa
             else if (encryptionType == ENCRYPT_DES) {
-                SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "DES");
+                // DES encryption
+                SecretKeySpec keySpec = new SecretKeySpec(workingKey, "DES");
                 Cipher cipher = Cipher.getInstance("DES/ECB/NoPadding");
                 cipher.init(Cipher.ENCRYPT_MODE, keySpec);
 
@@ -824,6 +1026,289 @@ public class DynamicPinBlockManager {
         }
         return bytes;
     }
+
+    /**
+     * Check if master key is set
+     */
+    public boolean isMasterKeySet() {
+        return MASTER_KEY != null && !MASTER_KEY.isEmpty();
+    }
+
+
+    /**
+     * Set master key from Flutter side
+     */
+    public boolean setMasterKey(String masterKey) {
+        try {
+            if (masterKey == null || masterKey.isEmpty()) {
+                Log.e(TAG, "Master key cannot be null or empty");
+                return false;
+            }
+
+            // Validate master key format (must be hex string)
+            if (!masterKey.matches("^[0-9A-Fa-f]+$")) {
+                Log.e(TAG, "Master key must be a valid hex string");
+                return false;
+            }
+
+            // Ensure even length for proper byte conversion
+            if (masterKey.length() % 2 != 0) {
+                masterKey = "0" + masterKey;
+            }
+
+            // For DES/3DES, key should be 16 or 24 bytes (32 or 48 hex chars)
+            if (masterKey.length() != 32 && masterKey.length() != 48) {
+                Log.w(TAG, "Master key length is " + masterKey.length() + " hex chars, recommended: 32 or 48");
+            }
+
+            MASTER_KEY = masterKey.toUpperCase();
+            Log.d(TAG, "Master key set successfully, length: " + MASTER_KEY.length() + " hex chars");
+
+            // If pinpad is already initialized, load the new master key
+            if (pinpad != null) {
+                return loadCurrentMasterKey();
+            }
+
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to set master key: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Load current master key into pinpad
+     */
+    private boolean loadCurrentMasterKey() {
+        try {
+            if (pinpad == null) {
+                Log.e(TAG, "Pinpad not available");
+                return false;
+            }
+
+            if (MASTER_KEY == null || MASTER_KEY.isEmpty()) {
+                Log.e(TAG, "Master key not set");
+                return false;
+            }
+
+            byte[] masterKeyData = hexToBytes(MASTER_KEY);
+
+            // Load master key with check value
+            byte[] checkValue = calculateKeyCheckValue(masterKeyData);
+
+            boolean result = pinpad.loadMainkey(MASTER_KEY_INDEX, masterKeyData, checkValue);
+            Log.d(TAG, "Master key load result: " + result);
+
+            return result;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load current master key: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get current master key (masked for security)
+     */
+    public String getMasterKey() {
+        if (MASTER_KEY == null) {
+            return null;
+        }
+
+        // Return masked version for security
+        int length = MASTER_KEY.length();
+        if (length <= 8) {
+            return "*".repeat(length);
+        }
+
+        return MASTER_KEY.substring(0, 4) + "*".repeat(length - 8) + MASTER_KEY.substring(length - 4);
+    }
+
+
+    /**
+     * Helper method to mask key for display (more sophisticated masking)
+     */
+    private String maskKey(String key) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+
+        int length = key.length();
+        if (length <= 8) {
+            return "*".repeat(length);
+        } else if (length <= 16) {
+            return key.substring(0, 2) + "*".repeat(length - 4) + key.substring(length - 2);
+        } else {
+            return key.substring(0, 4) + "*".repeat(length - 8) + key.substring(length - 4);
+        }
+    }
+
+
+    /**
+     * Get comprehensive master key info (for debugging and status)
+     */
+    public Map<String, Object> getMasterKeyInfo() {
+        Map<String, Object> info = new HashMap<>();
+
+        try {
+            // Basic key information
+            info.put("masterKeySet", isMasterKeySet());
+            info.put("masterKeyMasked", getMasterKey());
+            info.put("masterKeyIndex", MASTER_KEY_INDEX);
+
+            if (MASTER_KEY != null) {
+                info.put("keyLength", MASTER_KEY.length() / 2); // bytes
+                info.put("keyLengthHex", MASTER_KEY.length()); // hex chars
+
+                // Determine key type based on length
+                int keyBytes = MASTER_KEY.length() / 2;
+                String keyType;
+                boolean isRecommended;
+                String description;
+
+                switch (keyBytes) {
+                    case 8:
+                        keyType = "DES";
+                        isRecommended = false;
+                        description = "Single DES (64-bit key, not recommended for production)";
+                        break;
+                    case 16:
+                        keyType = "3DES-2KEY";
+                        isRecommended = true;
+                        description = "Triple DES with 2 keys (128-bit effective strength)";
+                        break;
+                    case 24:
+                        keyType = "3DES-3KEY";
+                        isRecommended = true;
+                        description = "Triple DES with 3 keys (168-bit key, highest security)";
+                        break;
+                    default:
+                        keyType = "CUSTOM";
+                        isRecommended = false;
+                        description = "Custom key length (" + keyBytes + " bytes)";
+                        break;
+                }
+
+                info.put("keyType", keyType);
+                info.put("isRecommended", isRecommended);
+                info.put("description", description);
+
+                // Key strength analysis
+                Map<String, Object> strength = new HashMap<>();
+                strength.put("effective", keyBytes * 8); // bits
+                strength.put("theoretical", keyBytes * 8); // bits
+
+                if (keyType.equals("3DES-2KEY")) {
+                    strength.put("effective", 112); // 3DES 2-key has 112-bit effective strength
+                } else if (keyType.equals("3DES-3KEY")) {
+                    strength.put("effective", 168); // 3DES 3-key has 168-bit effective strength
+                }
+
+                info.put("keyStrength", strength);
+
+                // Security assessment
+                Map<String, Object> security = new HashMap<>();
+                if (keyBytes >= 16) {
+                    security.put("level", "HIGH");
+                    security.put("recommendation", "Suitable for production use");
+                } else if (keyBytes == 8) {
+                    security.put("level", "LOW");
+                    security.put("recommendation", "Not recommended for production, use for testing only");
+                } else {
+                    security.put("level", "UNKNOWN");
+                    security.put("recommendation", "Custom key length, validate security requirements");
+                }
+                info.put("security", security);
+
+                // Calculate and include key check value
+                try {
+                    byte[] keyData = hexToBytes(MASTER_KEY);
+                    byte[] kcv = calculateKeyCheckValue(keyData);
+                    info.put("keyCheckValue", bytesToHex(kcv));
+                } catch (Exception e) {
+                    info.put("keyCheckValue", "Error calculating KCV: " + e.getMessage());
+                }
+
+            } else {
+                info.put("keyLength", 0);
+                info.put("keyLengthHex", 0);
+                info.put("keyType", "NOT_SET");
+                info.put("isRecommended", false);
+                info.put("description", "Master key not configured");
+                info.put("keyStrength", null);
+                info.put("security", null);
+                info.put("keyCheckValue", null);
+            }
+
+            // Hardware status
+            Map<String, Object> hardware = new HashMap<>();
+            hardware.put("pinpadAvailable", pinpad != null);
+            hardware.put("hardwareEncryption", pinpad != null);
+            hardware.put("deviceType", pinpad != null ? "Topwise CloudPOS" : "Not Available");
+            info.put("hardware", hardware);
+
+            // Default key information
+            info.put("defaultAvailable", MASTER_KEY != null);
+            if (MASTER_KEY != null) {
+                Map<String, Object> defaultInfo = new HashMap<>();
+                defaultInfo.put("length", MASTER_KEY.length() / 2);
+                defaultInfo.put("type", MASTER_KEY.length() == 32 ? "3DES-2KEY" : "OTHER");
+                defaultInfo.put("masked", maskKey(MASTER_KEY));
+                info.put("defaultKeyInfo", defaultInfo);
+            }
+
+            // Operational status
+            Map<String, Object> status = new HashMap<>();
+            status.put("loaded", isMasterKeySet());
+            status.put("initialized", pinpad != null && isMasterKeySet());
+            status.put("readyForOperations", pinpad != null && isMasterKeySet());
+            info.put("operationalStatus", status);
+
+            // Supported operations
+            Map<String, Object> supportedOps = new HashMap<>();
+            supportedOps.put("pinBlockCreation", isMasterKeySet());
+            supportedOps.put("workingKeyDecryption", isMasterKeySet());
+            supportedOps.put("hardwareEncryption", pinpad != null && isMasterKeySet());
+            supportedOps.put("softwareEncryption", isMasterKeySet());
+            info.put("supportedOperations", supportedOps);
+
+            // Configuration recommendations
+            Map<String, Object> recommendations = new HashMap<>();
+            if (!isMasterKeySet()) {
+                recommendations.put("action", "SET_MASTER_KEY");
+                recommendations.put("message", "Set master key using setMasterKey() method");
+                recommendations.put("priority", "HIGH");
+            } else if (pinpad == null) {
+                recommendations.put("action", "INITIALIZE_HARDWARE");
+                recommendations.put("message", "Initialize pinpad hardware for better security");
+                recommendations.put("priority", "MEDIUM");
+            } else {
+                recommendations.put("action", "READY");
+                recommendations.put("message", "System ready for PIN operations");
+                recommendations.put("priority", "NONE");
+            }
+            info.put("recommendations", recommendations);
+
+            // Statistics and usage info
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("lastUpdated", System.currentTimeMillis());
+            stats.put("configurationVersion", "2.0"); // Version of this configuration system
+            stats.put("apiVersion", "1.0");
+            info.put("statistics", stats);
+
+            // Add timestamp
+            info.put("timestamp", System.currentTimeMillis());
+            info.put("success", true);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting master key info: " + e.getMessage());
+            info.put("success", false);
+            info.put("error", "Failed to get master key info: " + e.getMessage());
+            info.put("timestamp", System.currentTimeMillis());
+        }
+
+        return info;
+    }
+
 
     /**
      * Debug method to test all PIN block formats

@@ -173,6 +173,10 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleGetRandom(result);
                 break;
 
+            case "getMasterKeyInfo":
+                handleGetMasterKeyInfo(result);
+                break;
+
             default:
                 result.notImplemented();
         }
@@ -252,6 +256,22 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 }
             }
         });
+    }
+
+    private void handleGetMasterKeyInfo(Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            Map<String, Object> masterKeyInfo = dynamicPinBlockManager.getMasterKeyInfo();
+            result.success(masterKeyInfo);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleGetMasterKeyInfo: " + e.getMessage());
+            result.error("MASTER_KEY_INFO_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
     }
 
     private void handleStopCardReading(Result result) {
@@ -678,6 +698,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             Integer workKeyId = (Integer) arguments.get("workKeyId");
             String keyDataHex = (String) arguments.get("keyData");
             String checkValueHex = (String) arguments.get("checkValue");
+            String masterKey = (String) arguments.get("masterKey");
 
             if (keyType == null || masterKeyId == null || workKeyId == null || keyDataHex == null) {
                 result.error("INVALID_PARAMS", "All key parameters are required", null);
@@ -687,7 +708,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             byte[] keyData = hexToBytes(keyDataHex);
             byte[] checkValue = checkValueHex != null ? hexToBytes(checkValueHex) : null;
 
-            boolean loadResult = dynamicPinBlockManager.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
+            boolean loadResult = dynamicPinBlockManager.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue, masterKey);
             result.success(loadResult);
 
         } catch (Exception e) {
