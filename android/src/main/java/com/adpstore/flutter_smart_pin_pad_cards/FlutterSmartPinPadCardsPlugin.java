@@ -708,7 +708,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             byte[] keyData = hexToBytes(keyDataHex);
             byte[] checkValue = checkValueHex != null ? hexToBytes(checkValueHex) : null;
 
-            boolean loadResult = dynamicPinBlockManager.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue, masterKey);
+            boolean loadResult = dynamicPinBlockManager.loadWorkKey(keyType, masterKeyId, workKeyId, keyData, checkValue);
             result.success(loadResult);
 
         } catch (Exception e) {
