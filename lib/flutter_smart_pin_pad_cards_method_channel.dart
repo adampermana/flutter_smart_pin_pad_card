@@ -27,6 +27,38 @@ class MethodChannelFlutterSmartPinPadCards extends FlutterSmartPinPadCardsPlatfo
   }
 
   @override
+  Future<Map<dynamic, dynamic>> decryptWorkingKey() async {
+    final result = await methodChannel.invokeMethod('decryptWorkingKey');
+    return Map<dynamic, dynamic>.from(result);
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>> setWorkingKey() async {
+    final result = await methodChannel.invokeMethod('setWorkingKey');
+    return Map<dynamic, dynamic>.from(result);
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>> clearWorkingKeyCache() async {
+    final result = await methodChannel.invokeMethod('clearWorkingKeyCache');
+    return Map<dynamic, dynamic>.from(result);
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>> getWorkingKeyStatus() async {
+    final result = await methodChannel.invokeMethod('getWorkingKeyStatus');
+    return Map<dynamic, dynamic>.from(result);
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>> getMasterKeyInfo() async {
+    final result = await methodChannel.invokeMethod('getMasterKeyInfo');
+    return Map<dynamic, dynamic>.from(result);
+  }
+
+
+
+  @override
   Future<Map<dynamic, dynamic>> createDynamicPinBlock() async {
     final result = await methodChannel.invokeMethod('createDynamicPinBlock');
     return Map<dynamic, dynamic>.from(result);
@@ -50,11 +82,13 @@ class MethodChannelFlutterSmartPinPadCards extends FlutterSmartPinPadCardsPlatfo
     return Map<dynamic, dynamic>.from(result);
   }
 
-  @override
-  Future<Map<dynamic, dynamic>> testAllPinBlockFormats() async {
-    final result = await methodChannel.invokeMethod('testAllPinBlockFormats');
-    return Map<dynamic, dynamic>.from(result);
-  }
+  // Gak dipakai
+  // @override
+  // Future<Map<dynamic, dynamic>> testAllPinBlockFormats() async {
+  //   final result = await methodChannel.invokeMethod('testAllPinBlockFormats');
+  //   return Map<dynamic, dynamic>.from(result);
+  // }
+
   @override
   Future<Map<dynamic, dynamic>> createPinBlock() async {
     final result = await methodChannel.invokeMethod('createPinBlock');

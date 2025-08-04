@@ -43,6 +43,14 @@ public class DynamicPinBlockManager {
     public static final byte MODE_ENCRYPT = 0;
     public static final byte MODE_DECRYPT = 1;
 
+    // Hardcoded Master Key - Static value for Bank Jateng
+    private static final String MASTER_KEY = "0123456789ABCDEF0123456789ABCDEF";
+
+    // Working key cache
+    private String decryptedWorkingKey = null;
+    private long workingKeyTimestamp = 0;
+    private static final long WORKING_KEY_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
     private DynamicPinBlockManager() {
         this.pinpad = DeviceServiceManagers.getInstance().getPinpadManager(0);
     }
@@ -108,6 +116,134 @@ public class DynamicPinBlockManager {
         return status;
     }
 
+
+    /**
+     * Get master key info
+     */
+    public Map<String, Object> getMasterKeyInfo() {
+        Map<String, Object> info = new HashMap<>();
+        try {
+            info.put("masterKeyConfigured", true);
+            info.put("masterKeyLength", MASTER_KEY.length());
+            info.put("masterKeyMasked", maskKey(MASTER_KEY));
+            info.put("workingKeyCached", decryptedWorkingKey != null);
+            if (decryptedWorkingKey != null) {
+                long cacheAge = System.currentTimeMillis() - workingKeyTimestamp;
+                info.put("workingKeyCacheAge", cacheAge);
+                info.put("workingKeyCacheValid", cacheAge < WORKING_KEY_CACHE_DURATION);
+            }
+            info.put("timestamp", System.currentTimeMillis());
+        } catch (Exception e) {
+            info.put("error", e.getMessage());
+        }
+        return info;
+    }
+
+    /**
+     * Decrypt working key using master key
+     */
+    public Map<String, Object> decryptWorkingKey(String encryptedWorkingKey) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Log.d(TAG, "Decrypting working key...");
+
+            if (encryptedWorkingKey == null || encryptedWorkingKey.isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Encrypted working key is required");
+                result.put("responseCode", "91");
+                return result;
+            }
+
+            // Check cache first
+            long currentTime = System.currentTimeMillis();
+            if (decryptedWorkingKey != null &&
+                    (currentTime - workingKeyTimestamp) < WORKING_KEY_CACHE_DURATION) {
+                Log.d(TAG, "Using cached working key");
+                result.put("success", true);
+                result.put("decryptedKey", decryptedWorkingKey);
+                result.put("fromCache", true);
+                result.put("cacheAge", currentTime - workingKeyTimestamp);
+                return result;
+            }
+
+            // Decrypt working key with master key
+            String decryptedKey = decryptWithMasterKey(encryptedWorkingKey);
+
+            if (decryptedKey != null) {
+                // Cache the decrypted working key
+                decryptedWorkingKey = decryptedKey;
+                workingKeyTimestamp = currentTime;
+
+                result.put("success", true);
+                result.put("decryptedKey", decryptedKey);
+                result.put("fromCache", false);
+                result.put("responseCode", "00");
+                result.put("timestamp", currentTime);
+
+                Log.d(TAG, "Working key decrypted and cached successfully");
+            } else {
+                result.put("success", false);
+                result.put("error", "Failed to decrypt working key");
+                result.put("responseCode", "91");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in decryptWorkingKey: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", "Exception: " + e.getMessage());
+            result.put("responseCode", "91");
+        }
+
+        return result;
+    }
+
+    /**
+     * Set working key directly (for cases where working key is already decrypted)
+     */
+    public Map<String, Object> setWorkingKey(String workingKey) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            if (workingKey == null || workingKey.isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Working key is required");
+                return result;
+            }
+
+            // Validate key length (should be 32 hex characters for 16 bytes)
+            if (workingKey.length() != 32) {
+                result.put("success", false);
+                result.put("error", "Invalid working key length: " + workingKey.length() + " (expected 32)");
+                return result;
+            }
+
+            // Cache the working key
+            decryptedWorkingKey = workingKey.toUpperCase();
+            workingKeyTimestamp = System.currentTimeMillis();
+
+            result.put("success", true);
+            result.put("workingKeySet", true);
+            result.put("timestamp", workingKeyTimestamp);
+
+            Log.d(TAG, "Working key set successfully");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in setWorkingKey: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", "Exception: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * Clear working key cache
+     */
+    public void clearWorkingKeyCache() {
+        decryptedWorkingKey = null;
+        workingKeyTimestamp = 0;
+        Log.d(TAG, "Working key cache cleared");
+    }
+
     /**
      * Load main key
      */
@@ -149,71 +285,74 @@ public class DynamicPinBlockManager {
     /**
      * Get key state
      */
-    public boolean getKeyState(int keyType, int keyIndex) {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return false;
-            }
-
-            // This might need adjustment based on actual API
-            return true; // Placeholder implementation
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to get key state: " + e.getMessage());
-            return false;
-        }
-    }
+//    Gak dipakai
+//    public boolean getKeyState(int keyType, int keyIndex) {
+//        try {
+//            if (pinpad == null) {
+//                Log.e(TAG, "Pinpad not initialized");
+//                return false;
+//            }
+//
+//            // This might need adjustment based on actual API
+//            return true; // Placeholder implementation
+//        } catch (Exception e) {
+//            Log.e(TAG, "Failed to get key state: " + e.getMessage());
+//            return false;
+//        }
+//    }
 
     /**
      * Generate MAC
      */
-    public Map<String, Object> getMac(Bundle param) {
-        Map<String, Object> result = new HashMap<>();
-        try {
-            if (pinpad == null) {
-                result.put("success", false);
-                result.put("error", "Pinpad not initialized");
-                return result;
-            }
-
-            // Implementation depends on specific MAC requirements
-            // This is a placeholder implementation
-            result.put("success", true);
-            result.put("mac", "1234567890ABCDEF"); // Placeholder
-            result.put("timestamp", System.currentTimeMillis());
-
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-        }
-        return result;
-    }
+//    Gak dipakai
+//    public Map<String, Object> getMac(Bundle param) {
+//        Map<String, Object> result = new HashMap<>();
+//        try {
+//            if (pinpad == null) {
+//                result.put("success", false);
+//                result.put("error", "Pinpad not initialized");
+//                return result;
+//            }
+//
+//            // Implementation depends on specific MAC requirements
+//            // This is a placeholder implementation
+//            result.put("success", true);
+//            result.put("mac", "1234567890ABCDEF"); // Placeholder
+//            result.put("timestamp", System.currentTimeMillis());
+//
+//        } catch (Exception e) {
+//            result.put("success", false);
+//            result.put("error", e.getMessage());
+//        }
+//        return result;
+//    }
 
 
     /**
      * Generate random number
      */
-    public byte[] getRandom() {
-        try {
-            if (pinpad == null) {
-                Log.e(TAG, "Pinpad not initialized");
-                return null;
-            }
-
-            // AidlPinpad.getRandom() returns byte[] directly
-            byte[] random = pinpad.getRandom();
-
-            if (random != null && random.length > 0) {
-                return random;
-            } else {
-                Log.e(TAG, "Failed to generate random number");
-                return null;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Exception generating random: " + e.getMessage());
-            return null;
-        }
-    }
+//    Gak Di pakai
+//    public byte[] getRandom() {
+//        try {
+//            if (pinpad == null) {
+//                Log.e(TAG, "Pinpad not initialized");
+//                return null;
+//            }
+//
+//            // AidlPinpad.getRandom() returns byte[] directly
+//            byte[] random = pinpad.getRandom();
+//
+//            if (random != null && random.length > 0) {
+//                return random;
+//            } else {
+//                Log.e(TAG, "Failed to generate random number");
+//                return null;
+//            }
+//        } catch (Exception e) {
+//            Log.e(TAG, "Exception generating random: " + e.getMessage());
+//            return null;
+//        }
+//    }
 
     /**
      * Legacy createPinBlock method for backward compatibility
@@ -244,6 +383,10 @@ public class DynamicPinBlockManager {
                 return result;
             }
 
+            // Use working key for encryption if available, otherwise use provided key
+            String keyToUse = decryptedWorkingKey != null ? decryptedWorkingKey : encryptionKey;
+            Log.d(TAG, "Using legacy PIN block creation");
+
             // Since AidlPinpad doesn't have direct inputPin method,
             // we'll use the dynamic PIN block creation as fallback
             Log.d(TAG, "Using dynamic PIN block creation for legacy method");
@@ -267,6 +410,7 @@ public class DynamicPinBlockManager {
             result.put("pinLength", pin.length());
             result.put("timestamp", System.currentTimeMillis());
             result.put("encryptionMethod", "Hardware");
+            result.put("usedWorkingKey", decryptedWorkingKey != null);
             result.put("error", dynamicResult.get("error"));
 
             if ((Boolean) result.get("success")) {
@@ -312,6 +456,13 @@ public class DynamicPinBlockManager {
                 result.put("responseCode", "21");
                 return result;
             }
+
+            // Use working key if available, otherwise use provided encryption key
+            String keyToUse = decryptedWorkingKey != null ? decryptedWorkingKey : encryptionKey;
+            boolean usingWorkingKey = decryptedWorkingKey != null;
+
+            Log.d(TAG, "Creating PIN block with " + (usingWorkingKey ? "working key" : "provided key"));
+
 
             // Format card number
             String formattedCardNumber = formatCardNumber(cardNumber);
@@ -360,6 +511,8 @@ public class DynamicPinBlockManager {
             result.put("encryptionType", encryptionType);
             result.put("encryptionMethod", useHardwareEncryption ? "Hardware" : "Software");
             result.put("fillerChar", fillerChar);
+            result.put("usedWorkingKey", usingWorkingKey);
+            result.put("keySource", usingWorkingKey ? "WorkingKey" : "ProvidedKey");
             result.put("timestamp", System.currentTimeMillis());
 
             Log.d(TAG, "PIN Block created successfully: " + encryptedPinBlock);
@@ -454,6 +607,7 @@ public class DynamicPinBlockManager {
             result.put("cardNumber", maskCardNumber(cardNumber));
             result.put("format", format);
             result.put("encryptionType", encryptionType);
+            result.put("usedWorkingKey", decryptedWorkingKey != null);
             result.put("timestamp", System.currentTimeMillis());
 
             Log.d(TAG, "Change PIN operation successful for card: " + maskCardNumber(cardNumber));
@@ -495,6 +649,7 @@ public class DynamicPinBlockManager {
             authData.put("pinLength", pin.length());
             authData.put("processingCode", PROCESSING_CODE_AUTHORIZE_PIN);
             authData.put("authorizationTime", System.currentTimeMillis());
+            authData.put("usedWorkingKey", decryptedWorkingKey != null);
 
             if (transactionAmount != null) {
                 authData.put("transactionAmount", transactionAmount);
@@ -510,6 +665,49 @@ public class DynamicPinBlockManager {
         }
 
         return result;
+    }
+
+    /**
+     * Decrypt working key using master key
+     */
+    private String decryptWithMasterKey(String encryptedWorkingKey) {
+        try {
+            Log.d(TAG, "Decrypting working key with master key");
+
+            byte[] masterKeyBytes = hexToBytes(MASTER_KEY);
+            byte[] encryptedKeyBytes = hexToBytes(encryptedWorkingKey);
+
+            // Use Triple DES for decryption
+            SecretKeySpec keySpec;
+            Cipher cipher;
+
+            if (masterKeyBytes.length == 16) {
+                // 2-key Triple DES (K1, K2, K1)
+                byte[] fullKey = new byte[24];
+                System.arraycopy(masterKeyBytes, 0, fullKey, 0, 16);
+                System.arraycopy(masterKeyBytes, 0, fullKey, 16, 8);
+                keySpec = new SecretKeySpec(fullKey, "DESede");
+                cipher = Cipher.getInstance("DESede/ECB/NoPadding");
+            } else if (masterKeyBytes.length == 24) {
+                // 3-key Triple DES
+                keySpec = new SecretKeySpec(masterKeyBytes, "DESede");
+                cipher = Cipher.getInstance("DESede/ECB/NoPadding");
+            } else {
+                Log.e(TAG, "Invalid master key length: " + masterKeyBytes.length);
+                return null;
+            }
+
+            cipher.init(Cipher.DECRYPT_MODE, keySpec);
+            byte[] decryptedBytes = cipher.doFinal(encryptedKeyBytes);
+            String decryptedKey = bytesToHex(decryptedBytes);
+
+            Log.d(TAG, "Working key decrypted successfully");
+            return decryptedKey;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to decrypt working key: " + e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -784,6 +982,11 @@ public class DynamicPinBlockManager {
         String clean = cardNumber.replaceAll("[^0-9]", "");
         if (clean.length() < 4) return "****";
         return "*".repeat(clean.length() - 4) + clean.substring(clean.length() - 4);
+    }
+
+    private String maskKey(String key) {
+        if (key == null || key.length() < 8) return "****";
+        return key.substring(0, 4) + "*".repeat(key.length() - 8) + key.substring(key.length() - 4);
     }
 
     private String getRandomHexChar() {

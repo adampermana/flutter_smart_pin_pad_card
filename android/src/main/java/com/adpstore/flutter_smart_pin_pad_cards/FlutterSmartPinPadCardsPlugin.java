@@ -131,9 +131,9 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleAuthorizePinDynamic(call, result);
                 break;
 
-            case "testAllPinBlockFormats":
-                handleTestAllPinBlockFormats(call, result);
-                break;
+//            case "testAllPinBlockFormats":
+//                handleTestAllPinBlockFormats(call, result);
+//                break;
 
             // Legacy PIN Block methods for backward compatibility
             case "createPinBlock":
@@ -161,20 +161,36 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleLoadWorkKey(call, result);
                 break;
 
-            case "getKeyState":
-                handleGetKeyState(call, result);
-                break;
+//            case "getKeyState":
+//                handleGetKeyState(call, result);
+//                break;
 
-            case "getMac":
-                handleGetMac(call, result);
-                break;
+//            case "getMac":
+//                handleGetMac(call, result);
+//                break;
 
-            case "getRandom":
-                handleGetRandom(result);
-                break;
+//            case "getRandom":
+//                handleGetRandom(result);
+//                break;
 
             case "getMasterKeyInfo":
                 handleGetMasterKeyInfo(result);
+                break;
+
+            case "decryptWorkingKey":
+                handleDecryptWorkingKey(call, result);
+                break;
+
+            case "setWorkingKey":
+                handleSetWorkingKey(call, result);
+                break;
+
+            case "clearWorkingKeyCache":
+                handleClearWorkingKeyCache(result);
+                break;
+
+            case "getWorkingKeyStatus":
+                handleGetWorkingKeyStatus(result);
                 break;
 
             default:
@@ -271,6 +287,95 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         } catch (Exception e) {
             Log.e(TAG, "Exception in handleGetMasterKeyInfo: " + e.getMessage());
             result.error("MASTER_KEY_INFO_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    // Working Key methods - NEW
+    private void handleDecryptWorkingKey(MethodCall call, Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            String encryptedWorkingKey = (String) arguments.get("encryptedWorkingKey");
+
+            if (encryptedWorkingKey == null || encryptedWorkingKey.isEmpty()) {
+                result.error("INVALID_PARAMS", "Encrypted working key is required", null);
+                return;
+            }
+
+            Map<String, Object> decryptResult = dynamicPinBlockManager.decryptWorkingKey(encryptedWorkingKey);
+            result.success(decryptResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleDecryptWorkingKey: " + e.getMessage());
+            result.error("DECRYPT_WORKING_KEY_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+
+    private void handleSetWorkingKey(MethodCall call, Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            Map<String, Object> arguments = call.arguments();
+            String workingKey = (String) arguments.get("workingKey");
+
+            if (workingKey == null || workingKey.isEmpty()) {
+                result.error("INVALID_PARAMS", "Working key is required", null);
+                return;
+            }
+
+            Map<String, Object> setResult = dynamicPinBlockManager.setWorkingKey(workingKey);
+            result.success(setResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleSetWorkingKey: " + e.getMessage());
+            result.error("SET_WORKING_KEY_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+
+    private void handleClearWorkingKeyCache(Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            dynamicPinBlockManager.clearWorkingKeyCache();
+
+            Map<String, Object> clearResult = new HashMap<>();
+            clearResult.put("success", true);
+            clearResult.put("message", "Working key cache cleared");
+            clearResult.put("timestamp", System.currentTimeMillis());
+
+            result.success(clearResult);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleClearWorkingKeyCache: " + e.getMessage());
+            result.error("CLEAR_WORKING_KEY_EXCEPTION", "Exception: " + e.getMessage(), null);
+        }
+    }
+
+    private void handleGetWorkingKeyStatus(Result result) {
+        try {
+            if (dynamicPinBlockManager == null) {
+                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+                return;
+            }
+
+            Map<String, Object> masterKeyInfo = dynamicPinBlockManager.getMasterKeyInfo();
+            result.success(masterKeyInfo);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in handleGetWorkingKeyStatus: " + e.getMessage());
+            result.error("WORKING_KEY_STATUS_EXCEPTION", "Exception: " + e.getMessage(), null);
         }
     }
 
@@ -571,37 +676,38 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
         }
     }
 
-    private void handleTestAllPinBlockFormats(MethodCall call, Result result) {
-        try {
-            if (dynamicPinBlockManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
-                return;
-            }
-
-            Map<String, Object> arguments = call.arguments();
-            String pin = (String) arguments.get("pin");
-            String cardNumber = (String) arguments.get("cardNumber");
-            String encryptionKey = (String) arguments.get("encryptionKey");
-
-            // Validate required parameters
-            if (pin == null || cardNumber == null) {
-                result.error("INVALID_PARAMS", "PIN and card number are required", null);
-                return;
-            }
-
-            // Set default encryption key if not provided
-            if (encryptionKey == null) {
-                encryptionKey = "404142434445464748494A4B4C4D4E4F";
-            }
-
-            Map<String, Object> testResults = dynamicPinBlockManager.testAllFormats(pin, cardNumber, encryptionKey);
-            result.success(testResults);
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleTestAllPinBlockFormats: " + e.getMessage());
-            result.error("TEST_FORMATS_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
+//    Gak dipakai
+//    private void handleTestAllPinBlockFormats(MethodCall call, Result result) {
+//        try {
+//            if (dynamicPinBlockManager == null) {
+//                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
+//                return;
+//            }
+//
+//            Map<String, Object> arguments = call.arguments();
+//            String pin = (String) arguments.get("pin");
+//            String cardNumber = (String) arguments.get("cardNumber");
+//            String encryptionKey = (String) arguments.get("encryptionKey");
+//
+//            // Validate required parameters
+//            if (pin == null || cardNumber == null) {
+//                result.error("INVALID_PARAMS", "PIN and card number are required", null);
+//                return;
+//            }
+//
+//            // Set default encryption key if not provided
+//            if (encryptionKey == null) {
+//                encryptionKey = "404142434445464748494A4B4C4D4E4F";
+//            }
+//
+//            Map<String, Object> testResults = dynamicPinBlockManager.testAllFormats(pin, cardNumber, encryptionKey);
+//            result.success(testResults);
+//
+//        } catch (Exception e) {
+//            Log.e(TAG, "Exception in handleTestAllPinBlockFormats: " + e.getMessage());
+//            result.error("TEST_FORMATS_EXCEPTION", "Exception: " + e.getMessage(), null);
+//        }
+//    }
 
     // Pinpad management methods
     private void handleInitPinpad(Result result) {
@@ -716,86 +822,88 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             result.error("LOAD_WORK_KEY_EXCEPTION", "Exception: " + e.getMessage(), null);
         }
     }
+// Gak di pakai
+//    private void handleGetKeyState(MethodCall call, Result result) {
+//        try {
+//            if (dynamicPinBlockManager == null) {
+//                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+//                return;
+//            }
+//
+//            Map<String, Object> arguments = call.arguments();
+//            Integer keyType = (Integer) arguments.get("keyType");
+//            Integer keyIndex = (Integer) arguments.get("keyIndex");
+//
+//            if (keyType == null || keyIndex == null) {
+//                result.error("INVALID_PARAMS", "Key type and key index are required", null);
+//                return;
+//            }
+//
+//            boolean keyState = dynamicPinBlockManager.getKeyState(keyType, keyIndex);
+//            result.success(keyState);
+//
+//        } catch (Exception e) {
+//            Log.e(TAG, "Exception in handleGetKeyState: " + e.getMessage());
+//            result.error("KEY_STATE_EXCEPTION", "Exception: " + e.getMessage(), null);
+//        }
+//    }
 
-    private void handleGetKeyState(MethodCall call, Result result) {
-        try {
-            if (dynamicPinBlockManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
+//    Gak dipakai
+//    private void handleGetMac(MethodCall call, Result result) {
+//        try {
+//            if (dynamicPinBlockManager == null) {
+//                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+//                return;
+//            }
+//
+//            Map<String, Object> arguments = call.arguments();
+//            // Convert arguments to Bundle for MAC calculation
+//            Bundle param = new Bundle();
+//            for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+//                String key = entry.getKey();
+//                Object value = entry.getValue();
+//                if (value instanceof String) {
+//                    param.putString(key, (String) value);
+//                } else if (value instanceof Integer) {
+//                    param.putInt(key, (Integer) value);
+//                } else if (value instanceof Boolean) {
+//                    param.putBoolean(key, (Boolean) value);
+//                }
+//            }
+//
+//            Map<String, Object> macResult = dynamicPinBlockManager.getMac(param);
+//            if ((Boolean) macResult.get("success")) {
+//                result.success(macResult);
+//            } else {
+//                result.error("MAC_ERROR", (String) macResult.get("error"), macResult);
+//            }
+//
+//        } catch (Exception e) {
+//            Log.e(TAG, "Exception in handleGetMac: " + e.getMessage());
+//            result.error("MAC_EXCEPTION", "Exception: " + e.getMessage(), null);
+//        }
+//    }
 
-            Map<String, Object> arguments = call.arguments();
-            Integer keyType = (Integer) arguments.get("keyType");
-            Integer keyIndex = (Integer) arguments.get("keyIndex");
-
-            if (keyType == null || keyIndex == null) {
-                result.error("INVALID_PARAMS", "Key type and key index are required", null);
-                return;
-            }
-
-            boolean keyState = dynamicPinBlockManager.getKeyState(keyType, keyIndex);
-            result.success(keyState);
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleGetKeyState: " + e.getMessage());
-            result.error("KEY_STATE_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
-
-    private void handleGetMac(MethodCall call, Result result) {
-        try {
-            if (dynamicPinBlockManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
-
-            Map<String, Object> arguments = call.arguments();
-            // Convert arguments to Bundle for MAC calculation
-            Bundle param = new Bundle();
-            for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                if (value instanceof String) {
-                    param.putString(key, (String) value);
-                } else if (value instanceof Integer) {
-                    param.putInt(key, (Integer) value);
-                } else if (value instanceof Boolean) {
-                    param.putBoolean(key, (Boolean) value);
-                }
-            }
-
-            Map<String, Object> macResult = dynamicPinBlockManager.getMac(param);
-            if ((Boolean) macResult.get("success")) {
-                result.success(macResult);
-            } else {
-                result.error("MAC_ERROR", (String) macResult.get("error"), macResult);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleGetMac: " + e.getMessage());
-            result.error("MAC_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
-
-    private void handleGetRandom(Result result) {
-        try {
-            if (dynamicPinBlockManager == null) {
-                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
-                return;
-            }
-
-            byte[] random = dynamicPinBlockManager.getRandom();
-            if (random != null) {
-                result.success(bytesToHex(random));
-            } else {
-                result.error("RANDOM_ERROR", "Failed to generate random number", null);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in handleGetRandom: " + e.getMessage());
-            result.error("RANDOM_EXCEPTION", "Exception: " + e.getMessage(), null);
-        }
-    }
+// Gak di pakai
+//    private void handleGetRandom(Result result) {
+//        try {
+//            if (dynamicPinBlockManager == null) {
+//                result.error("PINPAD_ERROR", "Pinpad manager not initialized", null);
+//                return;
+//            }
+//
+//            byte[] random = dynamicPinBlockManager.getRandom();
+//            if (random != null) {
+//                result.success(bytesToHex(random));
+//            } else {
+//                result.error("RANDOM_ERROR", "Failed to generate random number", null);
+//            }
+//
+//        } catch (Exception e) {
+//            Log.e(TAG, "Exception in handleGetRandom: " + e.getMessage());
+//            result.error("RANDOM_EXCEPTION", "Exception: " + e.getMessage(), null);
+//        }
+//    }
 
     // Utility methods
     private String bytesToHex(byte[] bytes) {

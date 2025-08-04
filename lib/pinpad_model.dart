@@ -660,3 +660,56 @@ class PinBlockUtil {
     return RegExp(r'^[0-9A-Fa-f]+$').hasMatch(clean) && clean.length % 2 == 0;
   }
 }
+
+class WorkingKeyResult {
+  final bool success;
+  final String? decryptedKey;
+  final bool fromCache;
+  final int? cacheAge;
+  final String? responseCode;
+  final String? error;
+  final int? timestamp;
+  final bool? workingKeySet;
+
+  WorkingKeyResult({
+    required this.success,
+    this.decryptedKey,
+    this.fromCache = false,
+    this.cacheAge,
+    this.responseCode,
+    this.error,
+    this.timestamp,
+    this.workingKeySet,
+  });
+
+  factory WorkingKeyResult.fromMap(Map<String, dynamic> map) {
+    return WorkingKeyResult(
+      success: map['success'] ?? false,
+      decryptedKey: map['decryptedKey'],
+      fromCache: map['fromCache'] ?? false,
+      cacheAge: map['cacheAge'],
+      responseCode: map['responseCode'],
+      error: map['error'],
+      timestamp: map['timestamp'],
+      workingKeySet: map['workingKeySet'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'success': success,
+      'decryptedKey': decryptedKey,
+      'fromCache': fromCache,
+      'cacheAge': cacheAge,
+      'responseCode': responseCode,
+      'error': error,
+      'timestamp': timestamp,
+      'workingKeySet': workingKeySet,
+    };
+  }
+
+  @override
+  String toString() {
+    return 'WorkingKeyResult{success: $success, fromCache: $fromCache, responseCode: $responseCode, error: $error}';
+  }
+}

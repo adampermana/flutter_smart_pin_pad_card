@@ -64,6 +64,65 @@ class FlutterSmartPinPadCards {
     }
   }
 
+  /// Decrypt working key using master key
+  static Future<WorkingKeyResult> decryptWorkingKey({
+    required String encryptedWorkingKey,
+  }) async {
+    try {
+      final result = await _channel.invokeMethod('decryptWorkingKey', {
+        'encryptedWorkingKey': encryptedWorkingKey,
+      });
+      return WorkingKeyResult.fromMap(Map<String, dynamic>.from(result));
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error');
+    }
+  }
+
+  /// Set working key directly (for already decrypted working key)
+  static Future<WorkingKeyResult> setWorkingKey({
+    required String workingKey,
+  }) async {
+    try {
+      final result = await _channel.invokeMethod('setWorkingKey', {
+        'workingKey': workingKey,
+      });
+      return WorkingKeyResult.fromMap(Map<String, dynamic>.from(result));
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error');
+    }
+  }
+
+  /// Clear working key cache
+  static Future<Map<String, dynamic>> clearWorkingKeyCache() async {
+    try {
+      final result = await _channel.invokeMethod('clearWorkingKeyCache');
+      return Map<String, dynamic>.from(result);
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error');
+    }
+  }
+
+  /// Get working key status
+  static Future<Map<String, dynamic>> getWorkingKeyStatus() async {
+    try {
+      final result = await _channel.invokeMethod('getWorkingKeyStatus');
+      return Map<String, dynamic>.from(result);
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error');
+    }
+  }
+
+  /// Get master key info
+  static Future<Map<String, dynamic>> getMasterKeyInfo() async {
+    try {
+      final result = await _channel.invokeMethod('getMasterKeyInfo');
+      return Map<String, dynamic>.from(result);
+    } on PlatformException catch (e) {
+      throw CardReaderException(e.code, e.message ?? 'Unknown error');
+    }
+  }
+
+
   /// Start insert card reading
   static Future<CardData> startInsertCardReading({
     bool enableMag = true,
@@ -204,32 +263,33 @@ class FlutterSmartPinPadCards {
   }
 
   /// Test all PIN block formats (for debugging)
-  static Future<Map<String, PinBlockResult>> testAllPinBlockFormats({
-    required String pin,
-    required String cardNumber,
-    String? encryptionKey,
-  }) async {
-    try {
-      final result = await _channel.invokeMethod('testAllPinBlockFormats', {
-        'pin': pin,
-        'cardNumber': cardNumber,
-        'encryptionKey': encryptionKey ?? "404142434445464748494A4B4C4D4E4F",
-      });
-
-      final Map<String, dynamic> resultMap = Map<String, dynamic>.from(result);
-      final Map<String, PinBlockResult> formattedResults = {};
-
-      for (final entry in resultMap.entries) {
-        formattedResults[entry.key] = PinBlockResult.fromMap(
-            Map<String, dynamic>.from(entry.value)
-        );
-      }
-
-      return formattedResults;
-    } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error');
-    }
-  }
+  /// Gak Dipakai
+  // static Future<Map<String, PinBlockResult>> testAllPinBlockFormats({
+  //   required String pin,
+  //   required String cardNumber,
+  //   String? encryptionKey,
+  // }) async {
+  //   try {
+  //     final result = await _channel.invokeMethod('testAllPinBlockFormats', {
+  //       'pin': pin,
+  //       'cardNumber': cardNumber,
+  //       'encryptionKey': encryptionKey ?? "404142434445464748494A4B4C4D4E4F",
+  //     });
+  //
+  //     final Map<String, dynamic> resultMap = Map<String, dynamic>.from(result);
+  //     final Map<String, PinBlockResult> formattedResults = {};
+  //
+  //     for (final entry in resultMap.entries) {
+  //       formattedResults[entry.key] = PinBlockResult.fromMap(
+  //           Map<String, dynamic>.from(entry.value)
+  //       );
+  //     }
+  //
+  //     return formattedResults;
+  //   } on PlatformException catch (e) {
+  //     throw CardReaderException(e.code, e.message ?? 'Unknown error');
+  //   }
+  // }
 
   /// Legacy PIN Block method for backward compatibility
   static Future<PinBlockResult> createPinBlock({
@@ -325,20 +385,20 @@ class FlutterSmartPinPadCards {
   }
 
   /// Get key state
-  static Future<bool> getKeyState({
-    required int keyType,
-    required int keyIndex,
-  }) async {
-    try {
-      final result = await _channel.invokeMethod('getKeyState', {
-        'keyType': keyType,
-        'keyIndex': keyIndex,
-      });
-      return result as bool;
-    } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error');
-    }
-  }
+  // static Future<bool> getKeyState({
+  //   required int keyType,
+  //   required int keyIndex,
+  // }) async {
+  //   try {
+  //     final result = await _channel.invokeMethod('getKeyState', {
+  //       'keyType': keyType,
+  //       'keyIndex': keyIndex,
+  //     });
+  //     return result as bool;
+  //   } on PlatformException catch (e) {
+  //     throw CardReaderException(e.code, e.message ?? 'Unknown error');
+  //   }
+  // }
 
   /// Get MAC
   static Future<Map<String, dynamic>> getMac(Map<String, dynamic> params) async {
@@ -351,14 +411,14 @@ class FlutterSmartPinPadCards {
   }
 
   /// Generate random number
-  static Future<String> getRandom() async {
-    try {
-      final result = await _channel.invokeMethod('getRandom');
-      return result as String;
-    } on PlatformException catch (e) {
-      throw CardReaderException(e.code, e.message ?? 'Unknown error');
-    }
-  }
+  // static Future<String> getRandom() async {
+  //   try {
+  //     final result = await _channel.invokeMethod('getRandom');
+  //     return result as String;
+  //   } on PlatformException catch (e) {
+  //     throw CardReaderException(e.code, e.message ?? 'Unknown error');
+  //   }
+  // }
 
   /// Utility Methods
 

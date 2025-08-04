@@ -49,9 +49,32 @@ abstract class FlutterSmartPinPadCardsPlatform extends PlatformInterface {
   Future<Map<dynamic, dynamic>> authorizePinDynamic() {
     throw UnimplementedError('authorizePinDynamic() has not been implemented.');
   }
-  Future<Map<dynamic, dynamic>> testAllPinBlockFormats() {
-    throw UnimplementedError('testAllPinBlockFormats() has not been implemented.');
+
+  Future<Map<dynamic, dynamic>> decryptWorkingKey() {
+    throw UnimplementedError('decryptWorkingKey() has not been implemented.');
   }
+
+  Future<Map<dynamic, dynamic>> setWorkingKey() {
+    throw UnimplementedError('setWorkingKey() has not been implemented.');
+  }
+
+  Future<Map<dynamic, dynamic>> clearWorkingKeyCache() {
+    throw UnimplementedError('clearWorkingKeyCache() has not been implemented.');
+  }
+
+  Future<Map<dynamic, dynamic>> getWorkingKeyStatus() {
+    throw UnimplementedError('getWorkingKeyStatus() has not been implemented.');
+  }
+
+  Future<Map<dynamic, dynamic>> getMasterKeyInfo() {
+    throw UnimplementedError('getMasterKeyInfo() has not been implemented.');
+  }
+
+
+  // Gak dipakai
+  // Future<Map<dynamic, dynamic>> testAllPinBlockFormats() {
+  //   throw UnimplementedError('testAllPinBlockFormats() has not been implemented.');
+  // }
 
   Future<Map<dynamic, dynamic>> createPinBlock() {
     throw UnimplementedError('createPinBlock() has not been implemented.');
