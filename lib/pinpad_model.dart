@@ -94,6 +94,7 @@ class PinBlockResult {
   final int? oldPinLength;
   final int? newPinLength;
   final int? keyIndex;
+  final Map<String, dynamic>? additionalData; // NEW - Added this property
 
   PinBlockResult({
     required this.success,
@@ -120,6 +121,7 @@ class PinBlockResult {
     this.oldPinLength,
     this.newPinLength,
     this.keyIndex,
+    this.additionalData, // NEW - Added this parameter
   });
 
   factory PinBlockResult.fromMap(Map<String, dynamic> map) {
@@ -150,6 +152,9 @@ class PinBlockResult {
       oldPinLength: map['oldPinLength'],
       newPinLength: map['newPinLength'],
       keyIndex: map['keyIndex'],
+      additionalData: map['additionalData'] != null // NEW - Added this mapping
+          ? Map<String, dynamic>.from(map['additionalData'])
+          : null,
     );
   }
 
@@ -179,16 +184,21 @@ class PinBlockResult {
       'oldPinLength': oldPinLength,
       'newPinLength': newPinLength,
       'keyIndex': keyIndex,
+      'additionalData': additionalData, // NEW - Added this to toMap
     };
   }
+
+  // Helper getters for working key information - NEW
+  bool get usedWorkingKey => additionalData?['usedWorkingKey'] ?? false;
+  String get keySource => additionalData?['keySource'] ?? 'Unknown';
 
   @override
   String toString() {
     return 'PinBlockResult{success: $success, responseCode: $responseCode, '
-        'pinBlock: $pinBlock, format: $format, operation: $operation}';
+        'pinBlock: $pinBlock, format: $format, operation: $operation, '
+        'usedWorkingKey: $usedWorkingKey, keySource: $keySource}';
   }
 }
-
 /// Result class for PIN verification
 class PinVerifyResult {
   final bool success;
