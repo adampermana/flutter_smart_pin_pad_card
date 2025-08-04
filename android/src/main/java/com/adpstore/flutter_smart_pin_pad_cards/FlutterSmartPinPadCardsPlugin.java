@@ -613,7 +613,7 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             // Set defaults
             if (format == null) format = DynamicPinBlockManager.PIN_BLOCK_FORMAT_0;
             if (encryptionKey == null) encryptionKey = "404142434445464748494A4B4C4D4E4F";
-            if (en  cryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
+            if (encryptionType == null) encryptionType = DynamicPinBlockManager.ENCRYPT_3DES;
             if (useHardwareEncryption == null) useHardwareEncryption = true;
 
             Map<String, Object> changePinResult = dynamicPinBlockManager.changePin(
