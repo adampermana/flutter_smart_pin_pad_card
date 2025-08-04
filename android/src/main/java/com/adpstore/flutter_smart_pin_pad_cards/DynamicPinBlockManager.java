@@ -196,6 +196,58 @@ public class DynamicPinBlockManager {
 
         return result;
     }
+    /**
+     * Load working key into hardware for faster encryption
+     * This method is now public to be called from the plugin
+     */
+    public boolean loadWorkingKeyIntoHardware(String workingKey) {
+        try {
+            if (pinpad == null) {
+                Log.d(TAG, "Pinpad not available for working key loading");
+                return false;
+            }
+
+            Log.d(TAG, "Loading working key into hardware...");
+            byte[] keyData = hexToBytes(workingKey);
+
+            // Extend key if needed for 3DES
+            if (keyData.length == 16) {
+                byte[] fullKey = new byte[24];
+                System.arraycopy(keyData, 0, fullKey, 0, 16);
+                System.arraycopy(keyData, 0, fullKey, 16, 8);
+                keyData = fullKey;
+            }
+
+            // Try to load as work key with key index 1 (reserve 0 for main key)
+            boolean loaded = pinpad.loadWorkKey(KEY_TYPE_PIK, 0, 1, keyData, null);
+
+            if (loaded) {
+                Log.d(TAG, "Working key loaded into hardware successfully");
+
+                // Verify the key was loaded correctly
+                try {
+                    boolean keyExists = pinpad.getKeyState(KEY_TYPE_PIK, 1);
+                    if (keyExists) {
+                        Log.d(TAG, "Working key verified in hardware");
+                        return true;
+                    } else {
+                        Log.w(TAG, "Working key loaded but verification failed");
+                        return false;
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Cannot verify working key state: " + e.getMessage());
+                    return true; // Assume successful if we can't verify
+                }
+            } else {
+                Log.w(TAG, "Failed to load working key into hardware");
+                return false;
+            }
+
+        } catch (Exception e) {
+            Log.w(TAG, "Exception loading working key into hardware: " + e.getMessage());
+            return false;
+        }
+    }
 
     /**
      * Set working key directly (for cases where working key is already decrypted)
