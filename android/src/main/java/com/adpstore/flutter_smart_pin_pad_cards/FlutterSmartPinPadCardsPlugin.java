@@ -332,6 +332,18 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             }
 
             Map<String, Object> setResult = dynamicPinBlockManager.setWorkingKey(workingKey);
+            // Try to load the working key into hardware immediately
+            if ((Boolean) setResult.get("success")) {
+                try {
+                    boolean hardwareLoaded = dynamicPinBlockManager.loadWorkingKeyIntoHardware(workingKey);
+                    setResult.put("hardwareLoaded", hardwareLoaded);
+                    Log.d(TAG, "Working key hardware loading: " + hardwareLoaded);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to load working key into hardware: " + e.getMessage());
+                    setResult.put("hardwareLoaded", false);
+                }
+            }
+
             result.success(setResult);
 
         } catch (Exception e) {
@@ -541,6 +553,14 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
 
             Map<String, Object> pinBlockResult = dynamicPinBlockManager.createDynamicPinBlock(
                     pin, cardNumber, format, encryptionKey, encryptionType, fillerChar, useHardwareEncryption);
+            // Add additional debugging info to result
+            if (pinBlockResult.containsKey("success") && (Boolean) pinBlockResult.get("success")) {
+                Log.d(TAG, "PIN block creation successful");
+                Log.d(TAG, "Encryption method used: " + pinBlockResult.get("encryptionMethod"));
+                Log.d(TAG, "Key source: " + pinBlockResult.get("keySource"));
+            } else {
+                Log.w(TAG, "PIN block creation failed: " + pinBlockResult.get("error"));
+            }
 
             result.success(pinBlockResult);
 
