@@ -209,12 +209,20 @@ public class DynamicPinBlockManager {
                 return result;
             }
 
-            // Validate key length (should be 32 hex characters for 16 bytes)
-            if (workingKey.length() != 32) {
-                result.put("success", false);
-                result.put("error", "Invalid working key length: " + workingKey.length() + " (expected 32)");
+            // Validasi panjang yang diperbolehkan
+            if (workingKey.length() != 32 &&   // 16 byte
+                    workingKey.length() != 48) {   // 24 byte <-- TAMBAHKAN INI
+                result.put("success set Working Key", false);
+                result.put("error", "Invalid key length. Allowed: 32 or 48 chars");
                 return result;
             }
+
+//            // Validate key length (should be 32 hex characters for 16 bytes)
+//            if (workingKey.length() != 32) {
+//                result.put("success", false);
+//                result.put("error", "Invalid working key length: " + workingKey.length() + " (expected 32)");
+//                return result;
+//            }
 
             // Cache the working key
             decryptedWorkingKey = workingKey.toUpperCase();
@@ -672,6 +680,7 @@ public class DynamicPinBlockManager {
         // Create PIN part: 0 + PIN_LENGTH + PIN + FILLER
         String pinPart = "0" + String.format("%01d", pin.length()) + pin;
 
+
         // Pad to 16 characters
         while (pinPart.length() < 16) {
             pinPart += fillerChar.equals("random") ? getRandomHexChar() : fillerChar;
@@ -679,7 +688,10 @@ public class DynamicPinBlockManager {
 
         // Create PAN part: 0000 + rightmost 12 digits of PAN (excluding check digit)
         String panDigits = cardNumber.replaceAll("[^0-9]", "");
-        String panPart = "0000" + panDigits.substring(Math.max(0, panDigits.length() - 13), panDigits.length() - 1);
+        // Pastikan PAN part selalu 16 digit
+        String panPart = "0000" + panDigits.substring(panDigits.length() - 12, panDigits.length() - 1);
+        panPart = String.format("%16s", panPart).replace(' ', '0');
+//        String panPart = "0000" + panDigits.substring(Math.max(0, panDigits.length() - 13), panDigits.length() - 1);
 
         // Ensure PAN part is 16 characters
         if (panPart.length() > 16) {
@@ -790,9 +802,6 @@ public class DynamicPinBlockManager {
      /**
      * FIXED: Hardware encryption method - removes infinite recursion
      */
-    /**
-     * FIXED: Hardware encryption following Topwise example pattern
-     */
     private String encryptWithHardware(String plainPinBlock, String encryptionKey, int encryptionType) {
         try {
             if (pinpad == null) {
@@ -800,55 +809,48 @@ public class DynamicPinBlockManager {
                 return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
             }
 
-            Log.d(TAG, "=== HARDWARE ENCRYPTION (Topwise Pattern) ===");
+            Log.d(TAG, "=== HARDWARE ENCRYPTION DETAILED DEBUG ===");
             Log.d(TAG, "Plain PIN Block: " + plainPinBlock);
             Log.d(TAG, "Encryption Key: " + maskKey(encryptionKey));
 
-            // Step 1: Prepare key data like in Topwise example
+            // Step 1: Prepare key data
             byte[] keyData = hexToBytes(encryptionKey);
 
-            if (keyData.length == 16) {
-                byte[] fullKey = new byte[24];
-                System.arraycopy(keyData, 0, fullKey, 0, 16);
-                System.arraycopy(keyData, 0, fullKey, 16, 8);
-                keyData = fullKey;
-                Log.d(TAG, "Extended key to 24 bytes for 3DES");
-            }
+//            if (keyData.length == 16) {
+//                byte[] fullKey = new byte[24];
+//                System.arraycopy(keyData, 0, fullKey, 0, 16);
+//                System.arraycopy(keyData, 0, fullKey, 16, 8);
+//                keyData = fullKey;
+//                Log.d(TAG, "Extended key to 24 bytes for 3DES");
+//            }
+            Log.d(TAG, "Original key length: " + keyData.length * 8 + " bits");
 
-            // Step 2: Load TDK (Transaction Data Key) like in Topwise example
-            // First inject TDK using the pattern from Topwise
-            int workKeyId = 0; // Use work key ID 0 like in Topwise example
-            int mainKeyId = 1; // Use main key ID 1 like in Topwise example
+//            Log.d(TAG, "Final key bytes length: " + keyData.length);
 
-            Log.d(TAG, "=== LOADING TDK (Following Topwise Pattern) ===");
+            // Step 2: Load key as WORK KEY (required for encryptByTdk)
+            boolean workKeyLoaded = false;
+            int workKeyIndex = 1; // Use work key index 1
 
-            // Load main key first (like in Topwise example)
-            boolean mainKeyLoaded = false;
             try {
-                mainKeyLoaded = pinpad.loadMainkey(mainKeyId, keyData, null);
-                Log.d(TAG, "Main key loaded: " + mainKeyLoaded);
+                Log.d(TAG, "=== LOADING AS WORK KEY ===");
+                workKeyLoaded = pinpad.loadWorkKey(KEY_TYPE_PIK, 0, workKeyIndex, keyData, null);
+                Log.d(TAG, "Work key loaded: " + workKeyLoaded);
+
+                if (workKeyLoaded) {
+                    // Verify work key state
+                    boolean keyExists = pinpad.getKeyState(KEY_TYPE_PIK, workKeyIndex);
+                    Log.d(TAG, "Work key state verification: " + keyExists);
+                    if (!keyExists) {
+                        workKeyLoaded = false;
+                    }
+                }
             } catch (Exception e) {
-                Log.w(TAG, "Main key loading failed: " + e.getMessage());
+                Log.e(TAG, "Work key loading failed: " + e.getMessage());
+                workKeyLoaded = false;
             }
 
-            // Load TDK work key (following Topwise injectTDK pattern)
-            boolean tdkLoaded = false;
-            try {
-                // Use PinpadConstant.KeyType.KEYTYPE_TDK like in Topwise example
-                tdkLoaded = pinpad.loadWorkKey(
-                        KEY_TYPE_DEK, // Use TDK type (equivalent to KEYTYPE_TDK)
-                        mainKeyId,    // Master key index
-                        workKeyId,    // Work key index
-                        keyData,      // Key data
-                        null          // Check value
-                );
-                Log.d(TAG, "TDK work key loaded: " + tdkLoaded);
-            } catch (Exception e) {
-                Log.w(TAG, "TDK loading failed: " + e.getMessage());
-            }
-
-            if (!tdkLoaded && !mainKeyLoaded) {
-                Log.w(TAG, "Failed to load any key, using software fallback");
+            if (!workKeyLoaded) {
+                Log.w(TAG, "Failed to load work key, using software fallback");
                 return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
             }
 
@@ -862,125 +864,78 @@ public class DynamicPinBlockManager {
 
             Log.d(TAG, "PIN Block bytes: " + bytesToHex(pinBlockBytes));
 
-            // Step 4: Try encryption using cryptByTdk (like Topwise example)
-            byte[] encryptedData = new byte[8];
-            int maxRetries = 3;
+            // Step 4: Perform encryption
+            byte[] encryptedBlock = new byte[8];
+            int maxEncryptRetries = 3;
 
-            for (int retry = 0; retry < maxRetries; retry++) {
+            for (int retry = 0; retry < maxEncryptRetries; retry++) {
                 try {
-                    Log.d(TAG, "=== ENCRYPTION ATTEMPT " + (retry + 1) + " - cryptByTdk ===");
+                    Log.d(TAG, "=== ENCRYPTION ATTEMPT " + (retry + 1) + "/" + maxEncryptRetries + " ===");
 
-                    // Use cryptByTdk method like in Topwise example
-                    // cryptByTdk(int keyindex, byte mode, byte[] data, byte[] iv, byte[] cryptdata)
-                    int result = pinpad.cryptByTdk(
-                            workKeyId,              // Work key index (0)
-                            (byte) 0,              // Mode: 0 = ECB (like ALG_ENCRYPT_DES_ECB)
-                            pinBlockBytes,         // Data to encrypt
-                            null,                  // IV (null for ECB)
-                            encryptedData          // Output buffer
+                    // Use work key index for encryption
+                    int encryptResult = pinpad.encryptByTdk(
+                            workKeyIndex,         // Work key index (1)
+                            (byte) 0,            // Mode: 0 = ECB
+                            null,                // Random: null
+                            pinBlockBytes,       // Data: 8 bytes PIN block
+                            encryptedBlock       // Output: 8 bytes buffer
                     );
 
-                    Log.d(TAG, "cryptByTdk returned: " + result);
-                    Log.d(TAG, "Encrypted data: " + bytesToHex(encryptedData));
+                    Log.d(TAG, "encryptByTdk returned: " + encryptResult);
+                    Log.d(TAG, "Output buffer: " + bytesToHex(encryptedBlock));
 
-                    if (result == 0) {
-                        String encryptedHex = bytesToHex(encryptedData);
+                    if (encryptResult == 0) {
+                        String encryptedHex = bytesToHex(encryptedBlock);
 
                         // Validate result is not all zeros
                         if (!encryptedHex.equals("0000000000000000")) {
-                            Log.d(TAG, "Hardware encryption successful with cryptByTdk: " + encryptedHex);
+                            Log.d(TAG, "Hardware encryption successful: " + encryptedHex);
                             return encryptedHex;
                         } else {
-                            Log.w(TAG, "cryptByTdk returned all zeros, retry " + (retry + 1));
+                            Log.w(TAG, "Hardware encryption returned all zeros, retry " + (retry + 1));
                         }
                     } else {
-                        Log.w(TAG, "cryptByTdk failed with code: " + result);
+                        Log.w(TAG, "Hardware encryption failed with code: " + encryptResult);
                     }
 
-                    if (retry < maxRetries - 1) {
+                    if (retry < maxEncryptRetries - 1) {
                         Thread.sleep(100);
                     }
 
                 } catch (Exception e) {
-                    Log.w(TAG, "cryptByTdk attempt " + (retry + 1) + " exception: " + e.getMessage());
-                    if (retry < maxRetries - 1) {
+                    Log.w(TAG, "Hardware encryption attempt " + (retry + 1) + " exception: " + e.getMessage());
+                    if (retry < maxEncryptRetries - 1) {
                         Thread.sleep(100);
                     }
                 }
             }
 
-            // Step 5: Try encryptByTdk as fallback
-            for (int retry = 0; retry < maxRetries; retry++) {
-                try {
-                    Log.d(TAG, "=== FALLBACK ATTEMPT " + (retry + 1) + " - encryptByTdk ===");
-
-                    // Try encryptByTdk as fallback
-                    int result = pinpad.encryptByTdk(
-                            workKeyId,              // Work key index
-                            (byte) 0,              // Mode: 0 = ECB
-                            null,                  // Random
-                            pinBlockBytes,         // Data
-                            encryptedData          // Output
-                    );
-
-                    Log.d(TAG, "encryptByTdk returned: " + result);
-
-                    if (result == 0) {
-                        String encryptedHex = bytesToHex(encryptedData);
-
-                        if (!encryptedHex.equals("0000000000000000")) {
-                            Log.d(TAG, "Hardware encryption successful with encryptByTdk: " + encryptedHex);
-                            return encryptedHex;
-                        }
-                    } else {
-                        Log.w(TAG, "encryptByTdk failed with code: " + result);
-                    }
-
-                    if (retry < maxRetries - 1) {
-                        Thread.sleep(100);
-                    }
-
-                } catch (Exception e) {
-                    Log.w(TAG, "encryptByTdk attempt " + (retry + 1) + " exception: " + e.getMessage());
-                    if (retry < maxRetries - 1) {
-                        Thread.sleep(100);
-                    }
-                }
-            }
-
-            // Step 6: Try cryptByFixedTdk (like in documentation)
+            // Step 5: Try alternative method - cryptByTdk
+            Log.d(TAG, "=== TRYING ALTERNATIVE: cryptByTdk ===");
             try {
-                Log.d(TAG, "=== TRYING cryptByFixedTdk ===");
+                int cryptResult = pinpad.cryptByTdk(workKeyIndex, (byte) 0, pinBlockBytes, null, encryptedBlock);
+                Log.d(TAG, "cryptByTdk returned: " + cryptResult);
 
-                int result = pinpad.cryptByFixedTdk(
-                        workKeyId,              // Key index
-                        (byte) 0,              // Mode: 0 = ECB
-                        pinBlockBytes,         // Data
-                        null,                  // IV
-                        encryptedData          // Output
-                );
-
-                Log.d(TAG, "cryptByFixedTdk returned: " + result);
-
-                if (result == 0) {
-                    String encryptedHex = bytesToHex(encryptedData);
-
+                if (cryptResult == 0) {
+                    String encryptedHex = bytesToHex(encryptedBlock);
                     if (!encryptedHex.equals("0000000000000000")) {
-                        Log.d(TAG, "Hardware encryption successful with cryptByFixedTdk: " + encryptedHex);
+                        Log.d(TAG, "Alternative cryptByTdk encryption successful: " + encryptedHex);
                         return encryptedHex;
                     }
                 }
             } catch (Exception e) {
-                Log.d(TAG, "cryptByFixedTdk exception: " + e.getMessage());
+                Log.d(TAG, "cryptByTdk exception: " + e.getMessage());
             }
 
             // Final fallback to software
-            Log.w(TAG, "All hardware encryption methods failed, using software fallback");
+            Log.w(TAG, "All hardware encryption attempts failed, using software fallback");
             return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
 
         } catch (Exception e) {
-            Log.e(TAG, "Hardware encryption exception: " + e.getMessage());
-            e.printStackTrace();
+            Log.e(TAG, "⚠️ CRITICAL HARDWARE FAILURE ⚠️");
+            Log.e(TAG, "Device: " + pinpad.getClass().getSimpleName());
+            Log.e(TAG, "Error: " + e.getMessage());
+            Log.e(TAG, "Switching to software encryption");
             return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
         }
     }
