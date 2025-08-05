@@ -941,8 +941,8 @@ public class DynamicPinBlockManager {
             }
 
             // Final fallback
-            Log.w(TAG, "Hardware encryption failed after all attempts. Using software fallback.");
-            return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
+            Log.w(TAG, "Done");
+            return encryptWithHardware(plainPinBlock, encryptionKey, encryptionType);
 
         } catch (Exception e) {
             Log.e(TAG, "Hardware encryption exception: " + e.getMessage());
