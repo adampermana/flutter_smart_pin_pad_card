@@ -809,22 +809,57 @@ public class DynamicPinBlockManager {
                 return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
             }
 
-            Log.d(TAG, "=== SYSTEMATIC HARDWARE ENCRYPTION DEBUG ===");
+            Log.d(TAG, "=== HARDWARE ENCRYPTION (24-byte key fix) ===");
             Log.d(TAG, "Plain PIN Block: " + plainPinBlock);
             Log.d(TAG, "Encryption Key: " + maskKey(encryptionKey));
 
-            // Step 1: Prepare key data
+            // CRITICAL: Prepare 24-byte key for 3DES hardware
             byte[] keyData = hexToBytes(encryptionKey);
+            Log.d(TAG, "Original key length: " + keyData.length + " bytes");
 
+            // For 3DES, hardware REQUIRES 24-byte key
             if (keyData.length == 16) {
                 byte[] fullKey = new byte[24];
-                System.arraycopy(keyData, 0, fullKey, 0, 16);
-                System.arraycopy(keyData, 0, fullKey, 16, 8);
+                System.arraycopy(keyData, 0, fullKey, 0, 16);  // K1, K2
+                System.arraycopy(keyData, 0, fullKey, 16, 8);  // K1 (repeat for 2-key 3DES)
                 keyData = fullKey;
-                Log.d(TAG, "Extended key to 24 bytes for 3DES");
+                Log.d(TAG, "Extended to 24 bytes for 3DES: " + bytesToHex(keyData));
+            } else if (keyData.length != 24) {
+                Log.e(TAG, "Invalid key length for 3DES: " + keyData.length + " bytes");
+                return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
             }
 
-            // Step 2: Prepare PIN block data
+            // Load 24-byte key as work key
+            boolean workKeyLoaded = false;
+            int workKeyIndex = 1;
+
+            try {
+                Log.d(TAG, "=== LOADING 24-BYTE WORK KEY ===");
+                Log.d(TAG, "Key data (24 bytes): " + bytesToHex(keyData));
+
+                workKeyLoaded = pinpad.loadWorkKey(KEY_TYPE_PIK, 0, workKeyIndex, keyData, null);
+                Log.d(TAG, "24-byte work key loaded: " + workKeyLoaded);
+
+                if (workKeyLoaded) {
+                    boolean keyExists = pinpad.getKeyState(KEY_TYPE_PIK, workKeyIndex);
+                    Log.d(TAG, "Work key state verification: " + keyExists);
+
+                    if (!keyExists) {
+                        workKeyLoaded = false;
+                        Log.w(TAG, "24-byte key loaded but verification failed");
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "24-byte work key loading failed: " + e.getMessage());
+                workKeyLoaded = false;
+            }
+
+            if (!workKeyLoaded) {
+                Log.w(TAG, "Failed to load 24-byte work key, trying alternative methods");
+                return tryAlternativeKeyMethods(keyData, plainPinBlock, encryptionKey, encryptionType);
+            }
+
+            // Prepare PIN block data
             byte[] pinBlockBytes = hexToBytes(plainPinBlock);
             if (pinBlockBytes.length != 8) {
                 Log.e(TAG, "Invalid PIN block length: " + pinBlockBytes.length);
@@ -832,42 +867,54 @@ public class DynamicPinBlockManager {
             }
 
             byte[] encryptedData = new byte[8];
+            Log.d(TAG, "PIN Block bytes: " + bytesToHex(pinBlockBytes));
 
-            // Step 3: Try different key loading and encryption combinations
-            String result = null;
+            // Try encryption with 24-byte key
+            int maxRetries = 3;
+            for (int retry = 0; retry < maxRetries; retry++) {
+                try {
+                    Log.d(TAG, "=== 24-BYTE KEY ENCRYPTION ATTEMPT " + (retry + 1) + "/" + maxRetries + " ===");
 
-            // Combination 1: loadKey + cryptByTdk with KEYTYPE_FIXED_TDK
-            Log.d(TAG, "=== TRYING: loadKey + cryptByTdk (FIXED_TDK) ===");
-            result = tryLoadKeyAndEncrypt(keyData, pinBlockBytes, encryptedData, "FIXED_TDK");
-            if (result != null) return result;
+                    // Use encryptByTdk with work key index
+                    int result = pinpad.encryptByTdk(
+                            workKeyIndex,         // Work key index (1)
+                            (byte) 0,            // Mode: 0 = ECB
+                            null,                // Random: null
+                            pinBlockBytes,       // Data: 8 bytes PIN block
+                            encryptedData        // Output: 8 bytes buffer
+                    );
 
-            // Combination 2: loadKey + cryptByFixedTdk
-            Log.d(TAG, "=== TRYING: loadKey + cryptByFixedTdk ===");
-            result = tryLoadKeyAndCryptByFixed(keyData, pinBlockBytes, encryptedData);
-            if (result != null) return result;
+                    Log.d(TAG, "encryptByTdk returned: " + result);
+                    Log.d(TAG, "Output buffer: " + bytesToHex(encryptedData));
 
-            // Combination 3: loadMainkey + encryptByTdk
-            Log.d(TAG, "=== TRYING: loadMainkey + encryptByTdk ===");
-            result = tryLoadMainkeyAndEncrypt(keyData, pinBlockBytes, encryptedData);
-            if (result != null) return result;
+                    if (result == 0) {
+                        String encryptedHex = bytesToHex(encryptedData);
 
-            // Combination 4: loadWorkKey + cryptByTdk with different key types
-            Log.d(TAG, "=== TRYING: loadWorkKey + cryptByTdk (TDK) ===");
-            result = tryLoadWorkKeyAndEncrypt(keyData, pinBlockBytes, encryptedData, "TDK");
-            if (result != null) return result;
+                        if (!encryptedHex.equals("0000000000000000")) {
+                            Log.d(TAG, "SUCCESS: 24-byte key hardware encryption: " + encryptedHex);
+                            return encryptedHex;
+                        } else {
+                            Log.w(TAG, "24-byte key encryption returned zeros, retry " + (retry + 1));
+                        }
+                    } else {
+                        Log.w(TAG, "24-byte key encryption failed with code: " + result);
+                    }
 
-            Log.d(TAG, "=== TRYING: loadWorkKey + cryptByTdk (PEK) ===");
-            result = tryLoadWorkKeyAndEncrypt(keyData, pinBlockBytes, encryptedData, "PEK");
-            if (result != null) return result;
+                    if (retry < maxRetries - 1) {
+                        Thread.sleep(100);
+                    }
 
-            // Combination 5: Try different key indices
-            Log.d(TAG, "=== TRYING: Different key indices ===");
-            result = tryDifferentKeyIndices(keyData, pinBlockBytes, encryptedData);
-            if (result != null) return result;
+                } catch (Exception e) {
+                    Log.w(TAG, "24-byte key encryption attempt " + (retry + 1) + " exception: " + e.getMessage());
+                    if (retry < maxRetries - 1) {
+                        Thread.sleep(100);
+                    }
+                }
+            }
 
-            // Final fallback
-            Log.w(TAG, "All hardware combinations failed, using software fallback");
-            return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
+            // Try alternative methods with 24-byte key
+            Log.d(TAG, "=== TRYING ALTERNATIVE METHODS WITH 24-BYTE KEY ===");
+            return tryAlternativeKeyMethods(keyData, plainPinBlock, encryptionKey, encryptionType);
 
         } catch (Exception e) {
             Log.e(TAG, "Hardware encryption exception: " + e.getMessage());
@@ -876,6 +923,113 @@ public class DynamicPinBlockManager {
         }
     }
 
+    private String tryAlternativeKeyMethods(byte[] keyData24, String plainPinBlock, String encryptionKey, int encryptionType) {
+        try {
+            byte[] pinBlockBytes = hexToBytes(plainPinBlock);
+            byte[] encryptedData = new byte[8];
+
+            Log.d(TAG, "Trying alternative methods with 24-byte key: " + bytesToHex(keyData24));
+
+            // Method 1: Load as main key with 24 bytes
+            try {
+                Log.d(TAG, "=== TRYING: loadMainkey with 24 bytes ===");
+                boolean mainKeyLoaded = pinpad.loadMainkey(0, keyData24, null);
+                Log.d(TAG, "24-byte main key loaded: " + mainKeyLoaded);
+
+                if (mainKeyLoaded) {
+                    int result = pinpad.encryptByTdk(0, (byte) 0, null, pinBlockBytes, encryptedData);
+                    if (result == 0) {
+                        String encryptedHex = bytesToHex(encryptedData);
+                        if (!encryptedHex.equals("0000000000000000")) {
+                            Log.d(TAG, "SUCCESS with 24-byte main key: " + encryptedHex);
+                            return encryptedHex;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.d(TAG, "24-byte main key method failed: " + e.getMessage());
+            }
+
+            // Method 2: Load as fixed TDK with 24 bytes
+            try {
+                Log.d(TAG, "=== TRYING: loadKey(FIXED_TDK) with 24 bytes ===");
+                boolean fixedKeyLoaded = pinpad.loadKey(0, 4, keyData24, null); // 4 = FIXED_TDK
+                Log.d(TAG, "24-byte fixed TDK loaded: " + fixedKeyLoaded);
+
+                if (fixedKeyLoaded) {
+                    // Try cryptByTdk
+                    int result = pinpad.cryptByTdk(0, (byte) 0, pinBlockBytes, null, encryptedData);
+                    if (result == 0) {
+                        String encryptedHex = bytesToHex(encryptedData);
+                        if (!encryptedHex.equals("0000000000000000")) {
+                            Log.d(TAG, "SUCCESS with 24-byte fixed TDK + cryptByTdk: " + encryptedHex);
+                            return encryptedHex;
+                        }
+                    }
+
+                    // Try cryptByFixedTdk
+                    result = pinpad.cryptByFixedTdk(0, (byte) 0, pinBlockBytes, null, encryptedData);
+                    if (result == 0) {
+                        String encryptedHex = bytesToHex(encryptedData);
+                        if (!encryptedHex.equals("0000000000000000")) {
+                            Log.d(TAG, "SUCCESS with 24-byte fixed TDK + cryptByFixedTdk: " + encryptedHex);
+                            return encryptedHex;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.d(TAG, "24-byte fixed TDK method failed: " + e.getMessage());
+            }
+
+            // Method 3: Try different work key types with 24 bytes
+            int[] keyTypes = {0, 1, 2}; // PEK, MAK, TDK
+            String[] keyTypeNames = {"PEK", "MAK", "TDK"};
+
+            for (int i = 0; i < keyTypes.length; i++) {
+                try {
+                    Log.d(TAG, "=== TRYING: loadWorkKey(" + keyTypeNames[i] + ") with 24 bytes ===");
+
+                    // Load main key first
+                    boolean mainKeyLoaded = pinpad.loadMainkey(1, keyData24, null);
+
+                    // Load work key
+                    boolean workKeyLoaded = pinpad.loadWorkKey(keyTypes[i], 1, 0, keyData24, null);
+                    Log.d(TAG, "24-byte " + keyTypeNames[i] + " work key loaded: " + workKeyLoaded);
+
+                    if (workKeyLoaded) {
+                        // Try cryptByTdk
+                        int result = pinpad.cryptByTdk(0, (byte) 0, pinBlockBytes, null, encryptedData);
+                        if (result == 0) {
+                            String encryptedHex = bytesToHex(encryptedData);
+                            if (!encryptedHex.equals("0000000000000000")) {
+                                Log.d(TAG, "SUCCESS with 24-byte " + keyTypeNames[i] + " work key: " + encryptedHex);
+                                return encryptedHex;
+                            }
+                        }
+
+                        // Try encryptByTdk
+                        result = pinpad.encryptByTdk(0, (byte) 0, null, pinBlockBytes, encryptedData);
+                        if (result == 0) {
+                            String encryptedHex = bytesToHex(encryptedData);
+                            if (!encryptedHex.equals("0000000000000000")) {
+                                Log.d(TAG, "SUCCESS with 24-byte " + keyTypeNames[i] + " + encryptByTdk: " + encryptedHex);
+                                return encryptedHex;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.d(TAG, "24-byte " + keyTypeNames[i] + " work key method failed: " + e.getMessage());
+                }
+            }
+
+            Log.w(TAG, "All 24-byte key methods failed, using software fallback");
+            return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Alternative 24-byte key methods failed: " + e.getMessage());
+            return encryptWithSoftware(plainPinBlock, encryptionKey, encryptionType);
+        }
+    }
     /**
      * Try loadKey with FIXED key types + cryptByTdk
      */
