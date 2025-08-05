@@ -437,10 +437,10 @@ public class DynamicPinBlockManager {
             result.put("pinLength", pin.length());
             result.put("cardNumber", maskCardNumber(cardNumber));
             result.put("encryptionType", encryptionType);
-            result.put("encryptionMethod", useHardwareEncryption ? "Hardware" : "Software");
-            result.put("fillerChar", fillerChar);
             result.put("usedWorkingKey", usingWorkingKey);
             result.put("keySource", usingWorkingKey ? "WorkingKey" : "ProvidedKey");
+            result.put("encryptionMethod", useHardwareEncryption ? "Hardware" : "Software");
+            result.put("fillerChar", fillerChar);
             result.put("timestamp", System.currentTimeMillis());
 
             Log.d(TAG, "PIN Block created successfully: " + encryptedPinBlock);
