@@ -212,64 +212,64 @@ class _LoginPageState extends State<LoginPage> {
                                   const SizedBox(height: 16),
 
                                   // Network Status Card
-                                  BlocBuilder<NetworkBloc, NetworkState>(
-                                    builder: (context, networkState) {
-                                      return Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade100,
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Colors.grey.shade300),
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            const Text(
-                                              'Default password: 1234',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              '${networkState.isConnected ? '✅' : '❌'} Server: ${NetworkService.serverHost}:${NetworkService.serverPort}',
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            ElevatedButton.icon(
-                                              onPressed: networkState.isCheckingConnection ? null : () {
-                                                context.read<NetworkBloc>().add(
-                                                  const NetworkEvent.checkConnection(),
-                                                );
-                                              },
-                                              icon: networkState.isCheckingConnection
-                                                  ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child: CircularProgressIndicator(strokeWidth: 2),
-                                              )
-                                                  : const Icon(Icons.refresh, size: 16),
-                                              label: const Text('Test System'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.grey.shade600,
-                                                foregroundColor: Colors.white,
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8
-                                                ),
-                                                minimumSize: const Size(0, 0),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                  // BlocBuilder<NetworkBloc, NetworkState>(
+                                  //   builder: (context, networkState) {
+                                  //     return Container(
+                                  //       padding: const EdgeInsets.all(12),
+                                  //       decoration: BoxDecoration(
+                                  //         color: Colors.grey.shade100,
+                                  //         borderRadius: BorderRadius.circular(8),
+                                  //         border: Border.all(color: Colors.grey.shade300),
+                                  //       ),
+                                  //       child: Column(
+                                  //         children: [
+                                  //           const Text(
+                                  //             'Default password: 1234',
+                                  //             style: TextStyle(
+                                  //               fontSize: 12,
+                                  //               color: Colors.grey,
+                                  //               fontStyle: FontStyle.italic,
+                                  //             ),
+                                  //           ),
+                                  //           const SizedBox(height: 8),
+                                  //           Text(
+                                  //             '${networkState.isConnected ? '✅' : '❌'} Server: ${NetworkService.serverHost}:${NetworkService.serverPort}',
+                                  //             style: const TextStyle(
+                                  //               fontSize: 11,
+                                  //               fontWeight: FontWeight.w500,
+                                  //             ),
+                                  //             textAlign: TextAlign.center,
+                                  //           ),
+                                  //           const SizedBox(height: 8),
+                                  //           ElevatedButton.icon(
+                                  //             onPressed: networkState.isCheckingConnection ? null : () {
+                                  //               context.read<NetworkBloc>().add(
+                                  //                 const NetworkEvent.checkConnection(),
+                                  //               );
+                                  //             },
+                                  //             icon: networkState.isCheckingConnection
+                                  //                 ? const SizedBox(
+                                  //               width: 16,
+                                  //               height: 16,
+                                  //               child: CircularProgressIndicator(strokeWidth: 2),
+                                  //             )
+                                  //                 : const Icon(Icons.refresh, size: 16),
+                                  //             label: const Text('Test System'),
+                                  //             style: ElevatedButton.styleFrom(
+                                  //               backgroundColor: Colors.grey.shade600,
+                                  //               foregroundColor: Colors.white,
+                                  //               padding: const EdgeInsets.symmetric(
+                                  //                   horizontal: 12,
+                                  //                   vertical: 8
+                                  //               ),
+                                  //               minimumSize: const Size(0, 0),
+                                  //             ),
+                                  //           ),
+                                  //         ],
+                                  //       ),
+                                  //     );
+                                  //   },
+                                  // ),
                                 ],
                               ),
                             );

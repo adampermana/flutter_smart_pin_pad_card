@@ -6,7 +6,7 @@ import 'package:flutter_smart_pin_pad_cards/pinpad_model.dart';
 
 /// Network service for handling ISO 8583 messages
 class NetworkService {
-  static const String serverHost = '192.168.88.68';
+  static const String serverHost = '192.168.88.105';
   static const int serverPort = 8082;
   static const int timeoutSeconds = 30;
 

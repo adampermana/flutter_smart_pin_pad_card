@@ -27,7 +27,6 @@ mixin _$CardOperationEvent {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -44,7 +43,6 @@ mixin _$CardOperationEvent {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -61,7 +59,6 @@ mixin _$CardOperationEvent {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -80,7 +77,6 @@ mixin _$CardOperationEvent {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -101,7 +97,6 @@ mixin _$CardOperationEvent {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -120,7 +115,6 @@ mixin _$CardOperationEvent {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -228,7 +222,6 @@ class _$CardOperationStartReadingImpl implements CardOperationStartReading {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -248,7 +241,6 @@ class _$CardOperationStartReadingImpl implements CardOperationStartReading {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -268,7 +260,6 @@ class _$CardOperationStartReadingImpl implements CardOperationStartReading {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -293,7 +284,6 @@ class _$CardOperationStartReadingImpl implements CardOperationStartReading {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -317,7 +307,6 @@ class _$CardOperationStartReadingImpl implements CardOperationStartReading {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -339,7 +328,6 @@ class _$CardOperationStartReadingImpl implements CardOperationStartReading {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -417,7 +405,6 @@ class _$CardOperationConfirmCardImpl implements CardOperationConfirmCard {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -437,7 +424,6 @@ class _$CardOperationConfirmCardImpl implements CardOperationConfirmCard {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -457,7 +443,6 @@ class _$CardOperationConfirmCardImpl implements CardOperationConfirmCard {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -482,7 +467,6 @@ class _$CardOperationConfirmCardImpl implements CardOperationConfirmCard {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -506,7 +490,6 @@ class _$CardOperationConfirmCardImpl implements CardOperationConfirmCard {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -528,7 +511,6 @@ class _$CardOperationConfirmCardImpl implements CardOperationConfirmCard {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -623,7 +605,6 @@ class _$CardOperationEnterPinImpl implements CardOperationEnterPin {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -643,7 +624,6 @@ class _$CardOperationEnterPinImpl implements CardOperationEnterPin {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -663,7 +643,6 @@ class _$CardOperationEnterPinImpl implements CardOperationEnterPin {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -688,7 +667,6 @@ class _$CardOperationEnterPinImpl implements CardOperationEnterPin {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -712,7 +690,6 @@ class _$CardOperationEnterPinImpl implements CardOperationEnterPin {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -734,7 +711,6 @@ class _$CardOperationEnterPinImpl implements CardOperationEnterPin {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -846,7 +822,6 @@ class _$CardOperationConfirmPinImpl implements CardOperationConfirmPin {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -866,7 +841,6 @@ class _$CardOperationConfirmPinImpl implements CardOperationConfirmPin {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -886,7 +860,6 @@ class _$CardOperationConfirmPinImpl implements CardOperationConfirmPin {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -911,7 +884,6 @@ class _$CardOperationConfirmPinImpl implements CardOperationConfirmPin {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -935,7 +907,6 @@ class _$CardOperationConfirmPinImpl implements CardOperationConfirmPin {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -957,7 +928,6 @@ class _$CardOperationConfirmPinImpl implements CardOperationConfirmPin {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1073,7 +1043,6 @@ class _$CardOperationProcessOperationImpl
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -1093,7 +1062,6 @@ class _$CardOperationProcessOperationImpl
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -1113,7 +1081,6 @@ class _$CardOperationProcessOperationImpl
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -1138,7 +1105,6 @@ class _$CardOperationProcessOperationImpl
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -1162,7 +1128,6 @@ class _$CardOperationProcessOperationImpl
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1184,7 +1149,6 @@ class _$CardOperationProcessOperationImpl
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1261,7 +1225,6 @@ class _$CardOperationCancelImpl implements CardOperationCancel {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -1281,7 +1244,6 @@ class _$CardOperationCancelImpl implements CardOperationCancel {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -1301,7 +1263,6 @@ class _$CardOperationCancelImpl implements CardOperationCancel {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -1326,7 +1287,6 @@ class _$CardOperationCancelImpl implements CardOperationCancel {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -1350,7 +1310,6 @@ class _$CardOperationCancelImpl implements CardOperationCancel {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1372,7 +1331,6 @@ class _$CardOperationCancelImpl implements CardOperationCancel {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1440,7 +1398,6 @@ class _$CardOperationTimeoutImpl implements CardOperationTimeout {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -1460,7 +1417,6 @@ class _$CardOperationTimeoutImpl implements CardOperationTimeout {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -1480,7 +1436,6 @@ class _$CardOperationTimeoutImpl implements CardOperationTimeout {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -1505,7 +1460,6 @@ class _$CardOperationTimeoutImpl implements CardOperationTimeout {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -1529,7 +1483,6 @@ class _$CardOperationTimeoutImpl implements CardOperationTimeout {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1551,7 +1504,6 @@ class _$CardOperationTimeoutImpl implements CardOperationTimeout {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1618,7 +1570,6 @@ class _$CardOperationResetImpl implements CardOperationReset {
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -1638,7 +1589,6 @@ class _$CardOperationResetImpl implements CardOperationReset {
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -1658,7 +1608,6 @@ class _$CardOperationResetImpl implements CardOperationReset {
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -1683,7 +1632,6 @@ class _$CardOperationResetImpl implements CardOperationReset {
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -1707,7 +1655,6 @@ class _$CardOperationResetImpl implements CardOperationReset {
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1729,7 +1676,6 @@ class _$CardOperationResetImpl implements CardOperationReset {
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -1747,221 +1693,6 @@ class _$CardOperationResetImpl implements CardOperationReset {
 
 abstract class CardOperationReset implements CardOperationEvent {
   const factory CardOperationReset() = _$CardOperationResetImpl;
-}
-
-/// @nodoc
-abstract class _$$CardOperationSetWorkingKeyImplCopyWith<$Res> {
-  factory _$$CardOperationSetWorkingKeyImplCopyWith(
-          _$CardOperationSetWorkingKeyImpl value,
-          $Res Function(_$CardOperationSetWorkingKeyImpl) then) =
-      __$$CardOperationSetWorkingKeyImplCopyWithImpl<$Res>;
-  @useResult
-  $Res call({String workingKey});
-}
-
-/// @nodoc
-class __$$CardOperationSetWorkingKeyImplCopyWithImpl<$Res>
-    extends _$CardOperationEventCopyWithImpl<$Res,
-        _$CardOperationSetWorkingKeyImpl>
-    implements _$$CardOperationSetWorkingKeyImplCopyWith<$Res> {
-  __$$CardOperationSetWorkingKeyImplCopyWithImpl(
-      _$CardOperationSetWorkingKeyImpl _value,
-      $Res Function(_$CardOperationSetWorkingKeyImpl) _then)
-      : super(_value, _then);
-
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? workingKey = null,
-  }) {
-    return _then(_$CardOperationSetWorkingKeyImpl(
-      workingKey: null == workingKey
-          ? _value.workingKey
-          : workingKey // ignore: cast_nullable_to_non_nullable
-              as String,
-    ));
-  }
-}
-
-/// @nodoc
-
-class _$CardOperationSetWorkingKeyImpl implements CardOperationSetWorkingKey {
-  const _$CardOperationSetWorkingKeyImpl({required this.workingKey});
-
-  @override
-  final String workingKey;
-
-  @override
-  String toString() {
-    return 'CardOperationEvent.setWorkingKey(workingKey: $workingKey)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$CardOperationSetWorkingKeyImpl &&
-            (identical(other.workingKey, workingKey) ||
-                other.workingKey == workingKey));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, workingKey);
-
-  @JsonKey(ignore: true)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$CardOperationSetWorkingKeyImplCopyWith<_$CardOperationSetWorkingKeyImpl>
-      get copyWith => __$$CardOperationSetWorkingKeyImplCopyWithImpl<
-          _$CardOperationSetWorkingKeyImpl>(this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function(CardOperationType operationType) startReading,
-    required TResult Function() confirmCard,
-    required TResult Function(String pin) enterPin,
-    required TResult Function(String? currentPin, String? newPin) confirmPin,
-    required TResult Function(String? currentPin, String? newPin)
-        processOperation,
-    required TResult Function() cancel,
-    required TResult Function() timeout,
-    required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
-    required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
-    required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
-    required TResult Function() clearWorkingKey,
-    required TResult Function() checkWorkingKeyStatus,
-  }) {
-    return setWorkingKey(workingKey);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(CardOperationType operationType)? startReading,
-    TResult? Function()? confirmCard,
-    TResult? Function(String pin)? enterPin,
-    TResult? Function(String? currentPin, String? newPin)? confirmPin,
-    TResult? Function(String? currentPin, String? newPin)? processOperation,
-    TResult? Function()? cancel,
-    TResult? Function()? timeout,
-    TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
-    TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
-    TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
-    TResult? Function()? clearWorkingKey,
-    TResult? Function()? checkWorkingKeyStatus,
-  }) {
-    return setWorkingKey?.call(workingKey);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function(CardOperationType operationType)? startReading,
-    TResult Function()? confirmCard,
-    TResult Function(String pin)? enterPin,
-    TResult Function(String? currentPin, String? newPin)? confirmPin,
-    TResult Function(String? currentPin, String? newPin)? processOperation,
-    TResult Function()? cancel,
-    TResult Function()? timeout,
-    TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
-    TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
-    TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
-    TResult Function()? clearWorkingKey,
-    TResult Function()? checkWorkingKeyStatus,
-    required TResult orElse(),
-  }) {
-    if (setWorkingKey != null) {
-      return setWorkingKey(workingKey);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(CardOperationStartReading value) startReading,
-    required TResult Function(CardOperationConfirmCard value) confirmCard,
-    required TResult Function(CardOperationEnterPin value) enterPin,
-    required TResult Function(CardOperationConfirmPin value) confirmPin,
-    required TResult Function(CardOperationProcessOperation value)
-        processOperation,
-    required TResult Function(CardOperationCancel value) cancel,
-    required TResult Function(CardOperationTimeout value) timeout,
-    required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
-    required TResult Function(CardOperationDecryptWorkingKey value)
-        decryptWorkingKey,
-    required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
-        processWorkingKeyFromLogon,
-    required TResult Function(CardOperationClearWorkingKey value)
-        clearWorkingKey,
-    required TResult Function(CardOperationCheckWorkingKeyStatus value)
-        checkWorkingKeyStatus,
-  }) {
-    return setWorkingKey(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(CardOperationStartReading value)? startReading,
-    TResult? Function(CardOperationConfirmCard value)? confirmCard,
-    TResult? Function(CardOperationEnterPin value)? enterPin,
-    TResult? Function(CardOperationConfirmPin value)? confirmPin,
-    TResult? Function(CardOperationProcessOperation value)? processOperation,
-    TResult? Function(CardOperationCancel value)? cancel,
-    TResult? Function(CardOperationTimeout value)? timeout,
-    TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
-    TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
-    TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
-        processWorkingKeyFromLogon,
-    TResult? Function(CardOperationClearWorkingKey value)? clearWorkingKey,
-    TResult? Function(CardOperationCheckWorkingKeyStatus value)?
-        checkWorkingKeyStatus,
-  }) {
-    return setWorkingKey?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(CardOperationStartReading value)? startReading,
-    TResult Function(CardOperationConfirmCard value)? confirmCard,
-    TResult Function(CardOperationEnterPin value)? enterPin,
-    TResult Function(CardOperationConfirmPin value)? confirmPin,
-    TResult Function(CardOperationProcessOperation value)? processOperation,
-    TResult Function(CardOperationCancel value)? cancel,
-    TResult Function(CardOperationTimeout value)? timeout,
-    TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
-    TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
-    TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
-        processWorkingKeyFromLogon,
-    TResult Function(CardOperationClearWorkingKey value)? clearWorkingKey,
-    TResult Function(CardOperationCheckWorkingKeyStatus value)?
-        checkWorkingKeyStatus,
-    required TResult orElse(),
-  }) {
-    if (setWorkingKey != null) {
-      return setWorkingKey(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class CardOperationSetWorkingKey implements CardOperationEvent {
-  const factory CardOperationSetWorkingKey({required final String workingKey}) =
-      _$CardOperationSetWorkingKeyImpl;
-
-  String get workingKey;
-  @JsonKey(ignore: true)
-  _$$CardOperationSetWorkingKeyImplCopyWith<_$CardOperationSetWorkingKeyImpl>
-      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -2045,7 +1776,6 @@ class _$CardOperationDecryptWorkingKeyImpl
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -2065,7 +1795,6 @@ class _$CardOperationDecryptWorkingKeyImpl
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -2085,7 +1814,6 @@ class _$CardOperationDecryptWorkingKeyImpl
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -2110,7 +1838,6 @@ class _$CardOperationDecryptWorkingKeyImpl
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -2134,7 +1861,6 @@ class _$CardOperationDecryptWorkingKeyImpl
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -2156,7 +1882,6 @@ class _$CardOperationDecryptWorkingKeyImpl
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -2266,7 +1991,6 @@ class _$CardOperationProcessWorkingKeyFromLogonImpl
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -2286,7 +2010,6 @@ class _$CardOperationProcessWorkingKeyFromLogonImpl
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -2306,7 +2029,6 @@ class _$CardOperationProcessWorkingKeyFromLogonImpl
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -2331,7 +2053,6 @@ class _$CardOperationProcessWorkingKeyFromLogonImpl
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -2355,7 +2076,6 @@ class _$CardOperationProcessWorkingKeyFromLogonImpl
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -2377,7 +2097,6 @@ class _$CardOperationProcessWorkingKeyFromLogonImpl
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -2458,7 +2177,6 @@ class _$CardOperationClearWorkingKeyImpl
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -2478,7 +2196,6 @@ class _$CardOperationClearWorkingKeyImpl
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -2498,7 +2215,6 @@ class _$CardOperationClearWorkingKeyImpl
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -2523,7 +2239,6 @@ class _$CardOperationClearWorkingKeyImpl
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -2547,7 +2262,6 @@ class _$CardOperationClearWorkingKeyImpl
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -2569,7 +2283,6 @@ class _$CardOperationClearWorkingKeyImpl
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -2642,7 +2355,6 @@ class _$CardOperationCheckWorkingKeyStatusImpl
     required TResult Function() cancel,
     required TResult Function() timeout,
     required TResult Function() reset,
-    required TResult Function(String workingKey) setWorkingKey,
     required TResult Function(String encryptedWorkingKey) decryptWorkingKey,
     required TResult Function(String workingKeyData) processWorkingKeyFromLogon,
     required TResult Function() clearWorkingKey,
@@ -2662,7 +2374,6 @@ class _$CardOperationCheckWorkingKeyStatusImpl
     TResult? Function()? cancel,
     TResult? Function()? timeout,
     TResult? Function()? reset,
-    TResult? Function(String workingKey)? setWorkingKey,
     TResult? Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult? Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult? Function()? clearWorkingKey,
@@ -2682,7 +2393,6 @@ class _$CardOperationCheckWorkingKeyStatusImpl
     TResult Function()? cancel,
     TResult Function()? timeout,
     TResult Function()? reset,
-    TResult Function(String workingKey)? setWorkingKey,
     TResult Function(String encryptedWorkingKey)? decryptWorkingKey,
     TResult Function(String workingKeyData)? processWorkingKeyFromLogon,
     TResult Function()? clearWorkingKey,
@@ -2707,7 +2417,6 @@ class _$CardOperationCheckWorkingKeyStatusImpl
     required TResult Function(CardOperationCancel value) cancel,
     required TResult Function(CardOperationTimeout value) timeout,
     required TResult Function(CardOperationReset value) reset,
-    required TResult Function(CardOperationSetWorkingKey value) setWorkingKey,
     required TResult Function(CardOperationDecryptWorkingKey value)
         decryptWorkingKey,
     required TResult Function(CardOperationProcessWorkingKeyFromLogon value)
@@ -2731,7 +2440,6 @@ class _$CardOperationCheckWorkingKeyStatusImpl
     TResult? Function(CardOperationCancel value)? cancel,
     TResult? Function(CardOperationTimeout value)? timeout,
     TResult? Function(CardOperationReset value)? reset,
-    TResult? Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult? Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult? Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,
@@ -2753,7 +2461,6 @@ class _$CardOperationCheckWorkingKeyStatusImpl
     TResult Function(CardOperationCancel value)? cancel,
     TResult Function(CardOperationTimeout value)? timeout,
     TResult Function(CardOperationReset value)? reset,
-    TResult Function(CardOperationSetWorkingKey value)? setWorkingKey,
     TResult Function(CardOperationDecryptWorkingKey value)? decryptWorkingKey,
     TResult Function(CardOperationProcessWorkingKeyFromLogon value)?
         processWorkingKeyFromLogon,

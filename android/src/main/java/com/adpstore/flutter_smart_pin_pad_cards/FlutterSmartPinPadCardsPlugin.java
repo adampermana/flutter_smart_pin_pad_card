@@ -131,9 +131,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
                 handleAuthorizePinDynamic(call, result);
                 break;
 
-//            case "testAllPinBlockFormats":
-//                handleTestAllPinBlockFormats(call, result);
-//                break;
 
             // Legacy PIN Block methods for backward compatibility
             case "createPinBlock":
@@ -160,18 +157,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             case "loadWorkKey":
                 handleLoadWorkKey(call, result);
                 break;
-
-//            case "getKeyState":
-//                handleGetKeyState(call, result);
-//                break;
-
-//            case "getMac":
-//                handleGetMac(call, result);
-//                break;
-
-//            case "getRandom":
-//                handleGetRandom(result);
-//                break;
 
             case "getMasterKeyInfo":
                 handleGetMasterKeyInfo(result);
@@ -695,39 +680,6 @@ public class FlutterSmartPinPadCardsPlugin implements FlutterPlugin, MethodCallH
             result.error("AUTHORIZE_PIN_DYNAMIC_EXCEPTION", "Exception: " + e.getMessage(), null);
         }
     }
-
-//    Gak dipakai
-//    private void handleTestAllPinBlockFormats(MethodCall call, Result result) {
-//        try {
-//            if (dynamicPinBlockManager == null) {
-//                result.error("PINPAD_ERROR", "Pinpad manager not available", null);
-//                return;
-//            }
-//
-//            Map<String, Object> arguments = call.arguments();
-//            String pin = (String) arguments.get("pin");
-//            String cardNumber = (String) arguments.get("cardNumber");
-//            String encryptionKey = (String) arguments.get("encryptionKey");
-//
-//            // Validate required parameters
-//            if (pin == null || cardNumber == null) {
-//                result.error("INVALID_PARAMS", "PIN and card number are required", null);
-//                return;
-//            }
-//
-//            // Set default encryption key if not provided
-//            if (encryptionKey == null) {
-//                encryptionKey = "404142434445464748494A4B4C4D4E4F";
-//            }
-//
-//            Map<String, Object> testResults = dynamicPinBlockManager.testAllFormats(pin, cardNumber, encryptionKey);
-//            result.success(testResults);
-//
-//        } catch (Exception e) {
-//            Log.e(TAG, "Exception in handleTestAllPinBlockFormats: " + e.getMessage());
-//            result.error("TEST_FORMATS_EXCEPTION", "Exception: " + e.getMessage(), null);
-//        }
-//    }
 
     // Pinpad management methods
     private void handleInitPinpad(Result result) {

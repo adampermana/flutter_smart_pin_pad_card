@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_smart_pin_pad_cards/flutter_smart_pin_pad_cards.dart';
 import 'package:flutter_smart_pin_pad_cards/pinpad_model.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../enum/pinpad.dart';
 import '../../network_service.dart';
@@ -23,14 +24,12 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
     on<CardOperationCancel>(_onCancel);
     on<CardOperationTimeout>(_onTimeout);
     on<CardOperationReset>(_onReset);
-    on<CardOperationSetWorkingKey>(_onSetWorkingKey);
-    on<CardOperationDecryptWorkingKey>(_onDecryptWorkingKey);
   }
 
   Future<void> _onStartReading(
-      CardOperationStartReading event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationStartReading event,
+    Emitter<CardOperationState> emit,
+  ) async {
     debugPrint('🔍 [CardOperationBloc] Starting card reading...');
     debugPrint('   └── Operation Type: ${event.operationType}');
     emit(CardOperationState.reading(
@@ -72,9 +71,9 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
   }
 
   Future<void> _onConfirmCard(
-      CardOperationConfirmCard event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationConfirmCard event,
+    Emitter<CardOperationState> emit,
+  ) async {
     state.maybeWhen(
       cardRead: (operationType, cardData) {
         debugPrint('   └── Operation Type: $operationType');
@@ -114,9 +113,9 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
   }
 
   Future<void> _onEnterPin(
-      CardOperationEnterPin event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationEnterPin event,
+    Emitter<CardOperationState> emit,
+  ) async {
     debugPrint('🔢 [CardOperationBloc] PIN entered');
     debugPrint('   └── PIN Length: ${event.pin.length} digits');
 
@@ -181,9 +180,9 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
   }
 
   Future<void> _onConfirmPin(
-      CardOperationConfirmPin event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationConfirmPin event,
+    Emitter<CardOperationState> emit,
+  ) async {
     add(CardOperationEvent.processOperation(
       currentPin: event.currentPin,
       newPin: event.newPin,
@@ -191,9 +190,9 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
   }
 
   Future<void> _onProcessOperation(
-      CardOperationProcessOperation event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationProcessOperation event,
+    Emitter<CardOperationState> emit,
+  ) async {
     await state.maybeWhen(
       pinEntry: (operationType, cardData, step, remainingTime, currentPin,
           newPin) async {
@@ -260,7 +259,7 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
           final response = await NetworkService.sendPinOperation(
             operationType: pinOperationType,
             systemsTraceNo:
-            DateTime.now().millisecondsSinceEpoch.toString().substring(7),
+                DateTime.now().millisecondsSinceEpoch.toString().substring(7),
             terminalId: 'T3000001',
             merchantId: 'BANKJATENG00001',
             track2Data: cardData.track2 ?? '',
@@ -297,74 +296,28 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
     );
   }
 
-  Future<void> _onSetWorkingKey(
-      CardOperationSetWorkingKey event,
-      Emitter<CardOperationState> emit,
-      ) async {
-    debugPrint('🔑 [CardOperationBloc] Setting working key...');
-    debugPrint('   └── Key Length: ${event.workingKey.length}');
-    try {
-      final result = await FlutterSmartPinPadCards.setWorkingKey(
-        workingKey: event.workingKey,
-      );
-
-      if (!result.success) {
-        debugPrint('❌ [CardOperationBloc] Failed to set working key');
-        debugPrint('   └── Error: ${result.error}');
-        emit(CardOperationState.error(
-          message: 'Failed to set working key: ${result.error}',
-        ));
-      } else {
-        debugPrint('✅ [CardOperationBloc] Working key set successfully ${result.success}');
-      }
-      // If successful, continue with current operation
-    } catch (e) {
-      emit(CardOperationState.error(
-        message: 'Error setting working key: $e',
-      ));
+  Future<String> _getEncryptedWorkingKeyFromSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encryptedKey = prefs.getString('working_key');
+    if (encryptedKey == null) {
+      throw Exception('No working key found in session');
     }
+    return encryptedKey;
   }
 
-  Future<void> _onDecryptWorkingKey(
-      CardOperationDecryptWorkingKey event,
-      Emitter<CardOperationState> emit,
-      ) async {
-    try {
-      debugPrint('🔐 [CardOperationBloc] Decrypting working key...');
-      debugPrint('   └── Encrypted Key Length: ${event.encryptedWorkingKey.length}');
-      final result = await FlutterSmartPinPadCards.decryptWorkingKey(
-        encryptedWorkingKey: event.encryptedWorkingKey,
-      );
-
-      if (!result.success) {
-        debugPrint('❌ [CardOperationBloc] Failed to decrypt working key');
-        debugPrint('   └── Error: ${result.error}');
-        emit(CardOperationState.error(
-          message: 'Failed to decrypt working key: ${result.error}',
-        ));
-      } else {
-        debugPrint('✅ [CardOperationBloc] Working key decrypted successfully ${result.success}');
-      }
-      // If successful, continue with current operation
-    } catch (e) {
-      emit(CardOperationState.error(
-        message: 'Error decrypting working key: $e',
-      ));
-    }
-  }
 
   Future<void> _onCancel(
-      CardOperationCancel event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationCancel event,
+    Emitter<CardOperationState> emit,
+  ) async {
     await FlutterSmartPinPadCards.stopInsertCardReading();
     emit(const CardOperationState.cancelled());
   }
 
   Future<void> _onTimeout(
-      CardOperationTimeout event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationTimeout event,
+    Emitter<CardOperationState> emit,
+  ) async {
     await FlutterSmartPinPadCards.stopInsertCardReading();
     emit(const CardOperationState.error(
       message: 'Operation timed out',
@@ -372,9 +325,9 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
   }
 
   Future<void> _onReset(
-      CardOperationReset event,
-      Emitter<CardOperationState> emit,
-      ) async {
+    CardOperationReset event,
+    Emitter<CardOperationState> emit,
+  ) async {
     emit(const CardOperationState.initial());
   }
 
@@ -407,10 +360,18 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
   Future<String?> _generatePinBlockWithWorkingKey(
       String pin, CardData cardData) async {
     try {
-
       debugPrint('🔐 [CardOperationBloc] Generating PIN block...');
       debugPrint('   └── PIN Length: ${pin.length}');
       debugPrint('   └── Card Number: ${(cardData.cardNumber)}');
+
+      final encryptedKey = await _getEncryptedWorkingKeyFromSession();
+      final decryptResult = await FlutterSmartPinPadCards.decryptWorkingKey(
+        encryptedWorkingKey: encryptedKey,
+      );
+
+      if (!decryptResult.success) {
+        throw Exception('Failed to decrypt working key: ${decryptResult.error}');
+      }
       // Try dynamic PIN block generation with working key
       // The createDynamicPinBlock method will automatically use working key if available
       final result = await FlutterSmartPinPadCards.createDynamicPinBlock(
@@ -419,6 +380,7 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
         format: FlutterSmartPinPadCards.PIN_BLOCK_FORMAT_0,
         encryptionType: FlutterSmartPinPadCards.ENCRYPT_3DES,
         useHardwareEncryption: true,
+        encryptionKey: decryptResult.decryptedKey!,
       );
 
       if (result.success && result.pinBlock != null) {
@@ -439,10 +401,6 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
     }
   }
 
-  /// Generate PIN block using legacy method (deprecated - kept for compatibility)
-  Future<String?> _generatePinBlock(String pin, CardData cardData) async {
-    return await _generatePinBlockWithWorkingKey(pin, cardData);
-  }
 
   /// Fallback PIN block generation (software-based)
   String _generateFallbackPinBlock(String pin, String cardNumber) {
@@ -455,8 +413,7 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
     debugPrint('   └── PIN Part: $pinPart');
 
     String panDigits = cardNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    String panPart = '0000' +
-        panDigits.substring(panDigits.length - 13, panDigits.length - 1);
+    String panPart = '0000${panDigits.substring(panDigits.length - 13, panDigits.length - 1)}';
     while (panPart.length < 16) {
       panPart = '0$panPart';
     }
@@ -479,54 +436,6 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
     return result;
   }
 
-  /// Helper method to process working key from logon response
-  Future<bool> processWorkingKeyFromLogon(String? workingKeyData) async {
-    if (workingKeyData == null || workingKeyData.isEmpty) {
-      print('No working key data received from logon');
-      return false;
-    }
-
-    try {
-      // Extract working key from logon response
-      // Format: "016" + 32-character hex key (length prefix + key)
-      String workingKey;
-      if (workingKeyData.startsWith('016') && workingKeyData.length >= 35) {
-        workingKey = workingKeyData.substring(3); // Remove length prefix
-      } else if (workingKeyData.length == 32) {
-        workingKey = workingKeyData; // Already plain key
-      } else {
-        // Try to decrypt if it's an encrypted working key
-        final decryptResult = await FlutterSmartPinPadCards.decryptWorkingKey(
-          encryptedWorkingKey: workingKeyData,
-        );
-
-        if (decryptResult.success && decryptResult.decryptedKey != null) {
-          workingKey = decryptResult.decryptedKey!;
-          debugPrint('$decryptResult');
-        } else {
-          print('Failed to process working key: ${decryptResult.error}');
-          return false;
-        }
-      }
-
-      // Set the working key
-      final setResult = await FlutterSmartPinPadCards.setWorkingKey(
-        workingKey: workingKey,
-      );
-
-      if (setResult.success) {
-        print('Working key processed and set successfully');
-        return true;
-      } else {
-        print('Failed to set working key: ${setResult.error}');
-        return false;
-      }
-    } catch (e) {
-      print('Error processing working key from logon: $e');
-      return false;
-    }
-  }
-
   /// Clear working key cache
   Future<void> clearWorkingKey() async {
     try {
@@ -534,17 +443,6 @@ class CardOperationBloc extends Bloc<CardOperationEvent, CardOperationState> {
       print('Working key cache cleared');
     } catch (e) {
       print('Error clearing working key cache: $e');
-    }
-  }
-
-  /// Get working key status
-  Future<Map<String, dynamic>> getWorkingKeyStatus() async {
-    try {
-      final status = await FlutterSmartPinPadCards.getWorkingKeyStatus();
-      debugPrint('   └── Status: $status');
-      return status;    } catch (e) {
-      print('Error getting working key status: $e');
-      return {'error': e.toString()};
     }
   }
 }

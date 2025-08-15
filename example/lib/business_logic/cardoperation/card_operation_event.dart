@@ -28,11 +28,6 @@ class CardOperationEvent with _$CardOperationEvent {
 
   const factory CardOperationEvent.reset() = CardOperationReset;
 
-  // Working Key Events - NEW
-  const factory CardOperationEvent.setWorkingKey({
-    required String workingKey,
-  }) = CardOperationSetWorkingKey;
-
   const factory CardOperationEvent.decryptWorkingKey({
     required String encryptedWorkingKey,
   }) = CardOperationDecryptWorkingKey;
